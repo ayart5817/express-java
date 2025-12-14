@@ -68,7 +68,7 @@ public class Sorted25 {
         System.out.println(list);
     }
     static void maxCalculatedMax(List<String> list) {
-        list.
+
     }
 
 
