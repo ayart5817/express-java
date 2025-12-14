@@ -1,0 +1,121 @@
+### AdminLogin
+POST {{hostname}}/api/auth/manager/v1/login
+Content-Type: application/json
+
+{
+  "username": "{{admin_username}}",
+  "password": "{{admin_password}}"
+}
+
+> {%
+    client.test("Request executed successfully", function () {
+        client.assert(response.status === 200, "Response status is not 200");
+        client.global.set("admin_access_token", response.body.accessToken);
+        client.global.set("admin_refresh_token", response.body.refreshToken);
+    });
+%}
+
+### Получить список заказов в архиве
+GET {{hostname}}/api/manager/analytics/v1/dwh-dict/period
+Authorization: Bearer {{admin_access_token}}
+
+### Получить список заказов в архиве
+GET {{hostname}}/api/manager/couriers/v1/10466/location
+Authorization: Bearer {{admin_access_token}}
+
+### Получить список заказов в архиве
+GET {{hostname}}/logist/restaurants/v1/list
+
+### Получить список заказов в архиве
+PUT {{hostname}}/logist/restaurants/v1/9994
+Content-Type: application/json
+
+{
+  "status": 0
+}
+
+
+### Доставка БКЛ, Ресторан 0000, Зона 1000002.
+POST https://logist.burgerkingrus.ru/logist/preorder/v2/delivery-addresses
+Authorization: Bearer 64trdNRVNyCY9TqzAsmPA7ejK8xcrvJ5
+Content-Type: application/json
+X-Platform: Mobile_App
+
+{
+  "addresses": [
+    {
+      "addressId": 5273,
+      "latitude": 54.6966161,
+      "longitude": 55.8651208
+    }
+  ]
+}
+
+### Доставка БКЛ, Ресторан 0000, Зона 1000002.
+POST https://logist.burgerkingrus.ru/logist/preorder/v2/delivery-addresses
+Authorization: Bearer 64trdNRVNyCY9TqzAsmPA7ejK8xcrvJ5
+Content-Type: application/json
+X-Platform: Mobile_App
+
+{
+  "addresses": [
+    {
+      "addressId": 5273,
+      "latitude": 54.65608585931832,
+      "longitude": 55.92009366968403
+    }
+  ]
+}
+
+### Доставка БКЛ, Ресторан 0000, Зона 1000002.
+POST {{hostname}}/logist/preorder/v2/delivery-addresses
+Authorization: Bearer 64trdNRVNyCY9TqzAsmPA7ejK8xcrvJ5
+Content-Type: application/json
+X-Platform: Mobile_App
+
+{
+  "addresses": [
+    {
+      "addressId": 5284,
+      "latitude": 55.782745,
+      "longitude": 37.720818
+    }
+  ]
+}
+
+
+### Доставка БКЛ, Ресторан 0000, Зона 1000002.
+POST {{hostname}}/logist/preorder/v2/delivery-addresses
+Authorization: Bearer 64trdNRVNyCY9TqzAsmPA7ejK8xcrvJ5
+Content-Type: application/json
+X-Platform: Mobile_App
+
+{
+  "addresses": [
+    {
+      "addressId": 5273,
+      "latitude": 54.6752,
+      "longitude": 55.9289
+    }
+  ]
+}
+
+
+### AdminLogin
+GET https://orderapp.burgerkingrus.ru/delivery/bk/yandexZones
+Content-Type: application/json
+x-burgerking-token: bcf98df5-0608-4d1f-8165-8b5513052539
+x-burgerking-platform: bk-logist
+
+### AdminLogin
+GET http://orderapp-stage.burgerkingrus.ru/delivery/bk/yandexZones
+Content-Type: application/json
+x-burgerking-token: bcf98df5-0608-4d1f-8165-8b5513052539
+x-burgerking-platform: bk-logist
+
+### AdminLogin
+GET https://backend.md-prod.ru/public/v1/merchant/places
+Content-Type: application/json
+Authorization: Bearer 3tG2sDgYpBf7ap5yHez4AcBt6eHqjfkLjisysYuSWwxaPTz5eI
+x-platform: integration
+
