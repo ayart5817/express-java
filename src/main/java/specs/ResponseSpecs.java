@@ -5,6 +5,9 @@ import io.restassured.specification.ResponseSpecification;
 import org.apache.http.HttpStatus;
 import org.hamcrest.Matchers;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.notNullValue;
+
 public class ResponseSpecs {
     private ResponseSpecs() {
     }
@@ -19,17 +22,73 @@ public class ResponseSpecs {
                 .expectStatusCode(HttpStatus.SC_CREATED)
                 .build();
     }
+
     public static ResponseSpecification requestReturnsOK() {
         return defaultResponseBuilder()
                 .expectStatusCode(HttpStatus.SC_OK)
                 .build();
     }
-    public static ResponseSpecification requestReturnsBadRequest(String errorKay, String errorValue ) {
+
+    public static ResponseSpecification requestReturnsBadRequest(String errorKey, String errorValue) {
         return defaultResponseBuilder()
                 .expectStatusCode(HttpStatus.SC_BAD_REQUEST)
-                .expectBody(errorKay, Matchers.equalTo((errorValue)))
+                .expectBody(errorKey, Matchers.equalTo((errorValue)))
                 .build();
     }
+
+    public static ResponseSpecification depositAccepted() {
+        return new ResponseSpecBuilder()
+                .expectStatusCode(HttpStatus.SC_OK)
+                .expectBody("balance", notNullValue())
+                .expectBody("transactions", notNullValue())
+                .build();
+    }
+
+    public static ResponseSpecification depositRejected(String messagePart) {
+        return new ResponseSpecBuilder()
+                .expectStatusCode(HttpStatus.SC_BAD_REQUEST)
+                .expectBody("message", containsString(messagePart))
+                .build();
+    }
+
+    public static ResponseSpecification forbiddenAccess() {
+        return new ResponseSpecBuilder()
+                .expectStatusCode(HttpStatus.SC_FORBIDDEN)
+                .build();
+    }
+
+    public static ResponseSpecification depositCreated() {
+        return new ResponseSpecBuilder()
+                .expectStatusCode(HttpStatus.SC_CREATED)
+                .expectBody("balance", Matchers.equalTo(0.0F))
+                .expectBody("transactions", Matchers.empty())
+                .build();
+    }
+
+    public static ResponseSpecification depositRejectedPlainText() {
+        return new ResponseSpecBuilder()
+                .expectStatusCode(HttpStatus.SC_BAD_REQUEST)
+                .build();
+    }
+
+    public static ResponseSpecification transactionsAccounts() {
+        return new ResponseSpecBuilder()
+                .expectStatusCode(HttpStatus.SC_OK)
+                .build();
+    }
+
+    public static ResponseSpecification transferRejectedPlainText() {
+        return new ResponseSpecBuilder()
+                .expectStatusCode(HttpStatus.SC_BAD_REQUEST)
+                .build();
+    }
+
+    public static ResponseSpecification transferAccepted() {
+        return new ResponseSpecBuilder()
+                .expectStatusCode(HttpStatus.SC_OK)
+                .build();
+    }
+
 }
 
 

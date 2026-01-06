@@ -3,26 +3,26 @@ package requests;
 import io.restassured.response.ValidatableResponse;
 import io.restassured.specification.RequestSpecification;
 import io.restassured.specification.ResponseSpecification;
-import models.BaseModel;
-import models.LoginUserRequest;
+import models.DepositRequest;
 
 import static io.restassured.RestAssured.given;
 
-public class LoginUserRequester extends Request<BaseModel> {
-    public LoginUserRequester(RequestSpecification requestSpecification, ResponseSpecification responseSpecification) {
+public class DepositRequester extends Request<DepositRequest> {
+
+    public DepositRequester(RequestSpecification requestSpecification, ResponseSpecification responseSpecification) {
         super(requestSpecification, responseSpecification);
     }
 
-
-
-
-    public ValidatableResponse post(BaseModel model) {
+    @Override
+    public ValidatableResponse post(DepositRequest model) {
         return given()
                 .spec(requestSpecification)
                 .body(model)
-                .post("/api/v1/auth/login")
+                .post("/api/v1/accounts/deposit")
                 .then()
-                .assertThat()
                 .spec(responseSpecification);
     }
+
 }
+
+

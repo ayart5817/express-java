@@ -1,7 +1,6 @@
 package iteration_1;
 
 import generators.RandomData;
-import iteration_1.BaseTest;
 import models.CreateUserRequest;
 import models.CreateUserResponse;
 import models.UserRole;
@@ -28,7 +27,7 @@ public class CreateUserTest extends BaseTest {
                 ResponseSpecs.entityWasCreated())
                 .post(createUserRequest).extract().as(CreateUserResponse.class);
 
-        softly.assertThat(createUserRequest.getUsername()).isEqualTo(createUserResponse.getUserName());
+        softly.assertThat(createUserRequest.getUsername()).isEqualTo(createUserResponse.getUsername());
         softly.assertThat(createUserRequest.getPassword()).isNotEqualTo(createUserResponse.getPassword());
         softly.assertThat(createUserRequest.getRole()).isEqualTo(createUserResponse.getRole());
     }

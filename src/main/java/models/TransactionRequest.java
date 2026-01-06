@@ -7,7 +7,6 @@ import lombok.*;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class LoginUserResponse extends BaseModel {
-    private String username;
-    private String role;
+public class TransactionRequest extends BaseModel{
+    long transactionID;
 }

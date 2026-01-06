@@ -1,7 +1,6 @@
-package iteration1;
+package iteration_1;
 
 import generators.RandomData;
-import iteration_1.BaseTest;
 import models.CreateUserRequest;
 import models.LoginUserRequest;
 import models.UserRole;
