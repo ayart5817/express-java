@@ -19,6 +19,7 @@ public class ProfileUpdate extends BaseModel {
     private CreateUserResponse user1;
     private AccountResponse account1;
     private String password;
+    private SoftAssertions softly;
 
     @AfterEach
     void checkSoftly() {
