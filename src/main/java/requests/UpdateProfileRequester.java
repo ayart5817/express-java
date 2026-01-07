@@ -13,8 +13,13 @@ public class UpdateProfileRequester  extends Request<UpdateProfileRequest>{
         super(requestSpecification, responseSpecification);
     }
 
+
     @Override
     public ValidatableResponse post(UpdateProfileRequest model) {
+        throw new UnsupportedOperationException("Метод не поддерживается");
+    }
+
+    public ValidatableResponse put(UpdateProfileRequest model) {
         return given()
                 .spec(requestSpecification)
                 .body(model)

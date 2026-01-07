@@ -2,6 +2,7 @@ package models;
 
 import lombok.*;
 
+
 @EqualsAndHashCode(callSuper = true)
 @Data
 @AllArgsConstructor

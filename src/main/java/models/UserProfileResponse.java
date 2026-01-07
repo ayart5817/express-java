@@ -24,6 +24,7 @@ public class UserProfileResponse{
     private String password;
     private List<AccountResponse> accounts;
 
+
     // Метод для получения всех транзакций из всех аккаунтов, отсортированных
     public List<Transaction> getAllSortedTransactions() {
         if (accounts == null) {

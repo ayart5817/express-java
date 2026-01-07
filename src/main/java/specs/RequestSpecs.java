@@ -39,7 +39,10 @@ public class RequestSpecs {
         String key = username + ":" + password;
         return SPEC_CACHE.computeIfAbsent(key, k -> {
             String token = new LoginUserRequester(unauthSpec(), requestReturnsOK())
-                    .post(LoginUserRequest.builder().username(username).password(password).build())
+                    .post(LoginUserRequest.builder()
+                            .username(username)
+                            .password(password)
+                            .build())
                      .extract()
                      .header("Authorization");
 

@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 public class TransferTest extends BaseTest {
 
 
-    // Поля для сохранения состояния между тестами (PER_CLASS)
+    // Поля для сохранения состояния между тестами
     private CreateUserResponse user1;
     private CreateUserResponse user2;
     private AccountResponse account1;
@@ -317,7 +317,7 @@ public class TransferTest extends BaseTest {
     void verificationBalanceU2AfterSecondTransfer() {
 
         UserProfileResponse profile = new UserProfileRequester(
-                RequestSpecs.authAsUser(user2.getUsername(), password),
+                RequestSpecs.authAsUser(user2.getUsername(), password2),
                 ResponseSpecs.requestReturnsOK())
                 .get()
                 .extract()
