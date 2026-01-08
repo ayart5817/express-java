@@ -1,57 +1,62 @@
 package specs;
 
+import configs.Config;
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.filter.log.RequestLoggingFilter;
 import io.restassured.filter.log.ResponseLoggingFilter;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import models.LoginUserRequest;
-import requests.LoginUserRequester;
+import requests.skeleton.Endpoint;
+import requests.skeleton.requester.CrudRequester;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
-import static specs.ResponseSpecs.requestReturnsOK;
-
 
 public class RequestSpecs {
-    private static final Map<String, RequestSpecification> SPEC_CACHE = new ConcurrentHashMap<>();
+    private static Map<String, String> authHeaders = new HashMap<>(Map.of("admin", "Basic YWRtaW46YWRtaW4="));
+
+    private RequestSpecs(){}
 
     private static RequestSpecBuilder defaultRequestBuilder() {
-        return new RequestSpecBuilder().setContentType(ContentType.JSON).setAccept(ContentType.JSON).addFilters(List.of(new RequestLoggingFilter(), new ResponseLoggingFilter())).setBaseUri("http://localhost:4111");
+        return new RequestSpecBuilder()
+                .setContentType(ContentType.JSON)
+                .setAccept(ContentType.JSON)
+                .addFilters( List.of(new RequestLoggingFilter(),
+                        new ResponseLoggingFilter()))
+                .setBaseUri(Config.getProperty("server") +Config.getProperty("apiVersion"));
     }
-    private RequestSpecs() {}
 
     public static RequestSpecification unauthSpec() {
         return defaultRequestBuilder().build();
     }
 
     public static RequestSpecification adminSpec() {
-        return defaultRequestBuilder().addHeader("Authorization", "Basic YWRtaW46YWRtaW4=").build();
+        return defaultRequestBuilder()
+                .addHeader("Authorization", authHeaders.get("admin"))
+                .build();
     }
 
     public static RequestSpecification authAsUser(String username, String password) {
-        String key = username + ":" + password;
-        return SPEC_CACHE.computeIfAbsent(key, k -> {
-            String token = new LoginUserRequester(unauthSpec(), requestReturnsOK())
-                    .post(LoginUserRequest.builder()
-                            .username(username)
-                            .password(password)
-                            .build())
-                     .extract()
-                     .header("Authorization");
+        String userAuthHeader;
 
-            if (token == null || token.isEmpty()) {
-                throw new IllegalStateException("Login failed for " + username);
-            }
+        if (!authHeaders.containsKey(username)) {
+            userAuthHeader = new CrudRequester(
+                    RequestSpecs.unauthSpec(),
+                    Endpoint.LOGIN,
+                    ResponseSpecs.requestReturnsOK())
+                    .post(LoginUserRequest.builder().username(username).password(password).build())
+                    .extract()
+                    .header("Authorization");
 
-            return defaultRequestBuilder().addHeader("Authorization", token).build();
-        });
+            authHeaders.put(username, userAuthHeader);
+        } else {
+            userAuthHeader = authHeaders.get(username);
+        }
+
+        return defaultRequestBuilder()
+                .addHeader("Authorization", userAuthHeader)
+                .build();
     }
-
 }

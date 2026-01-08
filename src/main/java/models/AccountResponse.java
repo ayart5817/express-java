@@ -1,9 +1,6 @@
 package models;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import models.Transaction;
 import java.util.Comparator;
@@ -11,12 +8,13 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+@EqualsAndHashCode(callSuper = true)
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
 
-public class AccountResponse  {
+public class AccountResponse extends BaseModel  {
 
     private int id;
     private String accountNumber;
