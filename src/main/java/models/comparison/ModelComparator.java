@@ -27,19 +27,34 @@ public class ModelComparator {
     }
 
     private static Object getFieldValue(Object obj, String fieldName) {
-        Class<?> clazz = obj.getClass();
-        while (clazz != null) {
-            try {
-                Field field = clazz.getDeclaredField(fieldName);
-                field.setAccessible(true);
-                return field.get(obj);
-            } catch (NoSuchFieldException e) {
-                clazz = clazz.getSuperclass();
-            } catch (IllegalAccessException e) {
-                throw new RuntimeException("Cannot access field: " + fieldName, e);
+        // Поддержка вложенных полей через точку: "customer.name"
+        String[] parts = fieldName.split("\\.");
+        Object current = obj;
+
+        for (String part : parts) {
+            if (current == null) {
+                return null;
+            }
+            Class<?> clazz = current.getClass();
+            boolean found = false;
+            while (clazz != null) {
+                try {
+                    Field field = clazz.getDeclaredField(part);
+                    field.setAccessible(true);
+                    current = field.get(current);
+                    found = true;
+                    break;
+                } catch (NoSuchFieldException e) {
+                    clazz = clazz.getSuperclass();
+                } catch (IllegalAccessException e) {
+                    throw new RuntimeException("Cannot access field: " + part, e);
+                }
+            }
+            if (!found) {
+                throw new RuntimeException("Field not found: " + part + " in class " + current.getClass().getName());
             }
         }
-        throw new RuntimeException("Field not found: " + fieldName + " in class " + obj.getClass().getName());
+        return current;
     }
 
     public static class ComparisonResult {

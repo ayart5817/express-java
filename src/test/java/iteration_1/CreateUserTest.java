@@ -1,16 +1,13 @@
 package iteration_1;
 
-import generators.RandomData;
 import generators.RandomModelGenerator;
 import models.CreateUserRequest;
 import models.CreateUserResponse;
-import models.UserRole;
 import models.comparison.ModelAssertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import requests.AdminCreateUserRequester;
 import requests.skeleton.Endpoint;
 import requests.skeleton.requester.CrudRequester;
 import requests.skeleton.requester.ValidatedCrudRequester;
@@ -18,7 +15,6 @@ import specs.RequestSpecs;
 import specs.ResponseSpecs;
 
 import java.util.stream.Stream;
-
 
 
 public class CreateUserTest extends BaseTest {
@@ -31,9 +27,9 @@ public class CreateUserTest extends BaseTest {
                 (RequestSpecs.adminSpec(),
                         Endpoint.ADMIN_USER,
                         ResponseSpecs.entityWasCreated())
-                .post(createUserRequest);
+                .postAndExtract(createUserRequest);
 
-        ModelAssertions.assertThatModels(createUserRequest,createUserResponse).match();
+        ModelAssertions.assertThatModels(createUserRequest, createUserResponse).match();
     }
 
     public static Stream<Arguments> userInvalidData() {

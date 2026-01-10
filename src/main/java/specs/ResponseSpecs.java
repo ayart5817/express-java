@@ -5,8 +5,7 @@ import io.restassured.specification.ResponseSpecification;
 import org.apache.http.HttpStatus;
 import org.hamcrest.Matchers;
 
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.*;
 
 public class ResponseSpecs {
     private ResponseSpecs() {
@@ -32,7 +31,7 @@ public class ResponseSpecs {
     public static ResponseSpecification requestReturnsBadRequest(String errorKey, String errorValue) {
         return defaultResponseBuilder()
                 .expectStatusCode(HttpStatus.SC_BAD_REQUEST)
-                .expectBody(errorKey, Matchers.equalTo((errorValue)))
+                .expectBody(errorKey, hasItem(errorValue))
                 .build();
     }
 
@@ -60,7 +59,7 @@ public class ResponseSpecs {
     public static ResponseSpecification depositCreated() {
         return new ResponseSpecBuilder()
                 .expectStatusCode(HttpStatus.SC_CREATED)
-                .expectBody("balance", Matchers.equalTo(0.0F))
+                .expectBody("balance", equalTo(0.0F))
                 .expectBody("transactions", Matchers.empty())
                 .build();
     }
@@ -90,5 +89,3 @@ public class ResponseSpecs {
     }
 
 }
-
-

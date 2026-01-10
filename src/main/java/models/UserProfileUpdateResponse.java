@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class UserProfileUpdateResponse{
+public class UserProfileUpdateResponse extends BaseModel {
     private CustomerResponse customer;
     private String message;
 }

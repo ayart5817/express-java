@@ -1,22 +1,19 @@
 package models;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
+@EqualsAndHashCode(callSuper = true)
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class UserProfileResponse{
+public class UserProfileResponse extends BaseModel {
     private Long id;
     private String username;
     private String name;
@@ -41,8 +38,9 @@ public class UserProfileResponse{
                 .sorted(Comparator.comparing(Transaction::getId).reversed()) // Новые сначала
                 .collect(Collectors.toList());
     }
+
     // Метод для получения аккаунта (удобно для тестов)
-    public Optional<AccountResponse> getAccountById(Integer accountId) {
+    public Optional<AccountResponse> getAccountById(long accountId) {
         if (accounts == null) {
             return Optional.empty();
         }

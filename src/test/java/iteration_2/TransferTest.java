@@ -1,11 +1,15 @@
 package iteration_2;
 
-import io.restassured.specification.RequestSpecification;
 import iteration_1.BaseTest;
 import models.*;
-import org.assertj.core.api.SoftAssertions;
+import models.comparison.ModelAssertions;
 import org.junit.jupiter.api.*;
-import requests.*;
+import requests.skeleton.Endpoint;
+import requests.skeleton.requester.ValidatedCrudRequester;
+import requests.steps.AdminSteps;
+import requests.steps.CreatedUser;
+import requests.steps.ProfileSteps;
+import requests.steps.UserSteps;
 import specs.RequestSpecs;
 import specs.ResponseSpecs;
 
@@ -27,473 +31,426 @@ public class TransferTest extends BaseTest {
     private String password;
     private String password2;
 
-
-    @AfterEach
-    void checkSoftly() {
-        softly.assertAll();
-    }
-
-    @BeforeEach
-    void initSoftly() {
-        softly = new SoftAssertions();
-    }
-
-
     @Order(1)
     @Test
-    @DisplayName("Создание User1 админом")
+    @DisplayName("Создание user1 + аккаунт – админом ")
     public void user1GenerateTest() {
-        //Подготовка данных статический юзер №1
-        String username = "Ayrat" + System.currentTimeMillis() % 100000;
-        password = "Ayrat123@";
+        CreatedUser createUser = AdminSteps.createUser();
+        user1 = createUser.getResponse();
+        password = createUser.getRequest().getPassword();
 
-        //создание пользователя
-        CreateUserRequest request = CreateUserRequest.builder()
-                .username(username)
-                .password(password)
-                .role(UserRole.USER.toString())
-                .build();
+        account1 = UserSteps.createAccount(user1.getUsername(), password);
 
-        //Отправляем запрос через requester и храним по user1
-        user1 = new AdminCreateUserRequester(
-                RequestSpecs.adminSpec(),
-                ResponseSpecs.entityWasCreated())
-                .post(request)
-                .extract()
-                .as(CreateUserResponse.class);
-
-
-        softly.assertThat(request.getUsername()).isEqualTo(user1.getUsername());
-    }
-
-
-    @Order(2)
-    @Test
-    @DisplayName("User1 логинится и создаёт счёт")
-    public void user1CreatesAccount() {
-        //логин
-        RequestSpecification user1Spec = RequestSpecs.authAsUser(user1.getUsername(), password);
-
-
-        //создаем счет
-        account1 = new CreateAccountRequester(
-                user1Spec,
-                ResponseSpecs.entityWasCreated())
-                .post(null)
-                .extract()
-                .as(AccountResponse.class);
-
-
-        //мягкие проверки
         softly.assertThat(account1.getAccountNumber()).startsWith("ACC");
         softly.assertThat(account1.getBalance()).isEqualTo(0.0);
         softly.assertThat(account1.getTransactions()).isEmpty();
+        softly.assertThat(createUser.getRequest().getUsername()).isEqualTo(createUser.getResponse().getUsername());
+    }
+
+    @Order(2)
+    @Test
+    @DisplayName("Создание user2 + аккаунт – админом ")
+    public void user2CreatesAccount() {
+
+        CreatedUser createUser = AdminSteps.createUser();
+        user2 = createUser.getResponse();
+        password2 = createUser.getRequest().getPassword();
+
+        account2 = UserSteps.createAccount(user2.getUsername(), password2);
+
+        softly.assertThat(account1.getAccountNumber()).startsWith("ACC");
+        softly.assertThat(account1.getBalance()).isEqualTo(0.0);
+        softly.assertThat(account1.getTransactions()).isEmpty();
+        softly.assertThat(createUser.getRequest().getUsername()).isEqualTo(createUser.getResponse().getUsername());
+
     }
 
     @Order(3)
     @Test
-    @DisplayName("Создаем User2")
-    public void user2GenerateTest() {
-        //Подготовка данных статический юзер №2
-        String username = "Ayrat2" + System.currentTimeMillis() % 1000000;
-        password2 = "Ayrat123@";
-
-        //создание пользователя
-        CreateUserRequest request = CreateUserRequest.builder()
-                .username(username)
-                .password(password)
-                .role(UserRole.USER.toString())
-                .build();
-
-        //Отправляем запрос через requester и храним по user2
-        user2 = new AdminCreateUserRequester(
-                RequestSpecs.adminSpec(),
-                ResponseSpecs.entityWasCreated())
-                .post(request)
-                .extract()
-                .as(CreateUserResponse.class);
-
-        softly.assertThat(request.getUsername()).isEqualTo(user2.getUsername());
-
-        account2 = new CreateAccountRequester(
-                RequestSpecs.authAsUser(username, password),
-                ResponseSpecs.entityWasCreated())
-                .post(null)
-                .extract()
-                .as(AccountResponse.class);
-        softly.assertThat(account2.getBalance()).isEqualTo(0.00);
-    }
-
-    @Order(4)
-    @Test
-    @DisplayName("Пополняем депозит на 20000 U2")
-        //Готовим депозит для тестов
+    @DisplayName("Пополняем депозит на 15000 U2 (3 × 5000)")
     void depositBelowLimit() {
-        double amount = 5000;
-        int times = 3;
-
-        for (int i = 1; i <= times; i++) {
-            DepositRequest request = DepositRequest.builder()
-                    .id(account2.getId())
-                    .balance(amount)
-                    .build();
-
-            AccountResponse response = new DepositRequester(
-                    RequestSpecs.authAsUser(user2.getUsername(), password2),
-                    ResponseSpecs.depositAccepted()
-            )
-                    .post(request)
-                    .extract()
-                    .as(AccountResponse.class);
-            softly.assertThat(response.getBalance()).isEqualTo(amount * i);
-
+        for (int i = 1; i <= 4; i++) {
+            AccountResponse response = UserSteps.makeDeposit(
+                    user2.getUsername(),
+                    password2,
+                    account2.getId(),
+                    5000.0
+            );
+            softly.assertThat(response.getBalance()).isEqualTo(5000.0 * i);
         }
     }
 
     @Order(5)
     @Test
-    @DisplayName("Успешный трансфер макс сумма")
+    @DisplayName("Успешный трансфер макс сумма + тестовая проба использовать сравнение моделей")
     void transferExactLimit() {
-        Double sum = 10000.00;
+        double sum = 10000.00;
         TransferRequest request = TransferRequest.builder()
                 .senderAccountId(account2.getId())
                 .receiverAccountId(account1.getId())
                 .amount(sum)
                 .build();
 
-        TransferResponse response = new TransferRequester(
+        TransferResponse response = new ValidatedCrudRequester<TransferResponse>(
                 RequestSpecs.authAsUser(user2.getUsername(), password2),
-                ResponseSpecs.transferAccepted())
-                .post(request)
-                .extract()
-                .as(TransferResponse.class);
+                Endpoint.ACCOUNTS_TRANSFER,
+                ResponseSpecs.transferAccepted()
+        ).postAndExtract(request);
+
+
         softly.assertThat(response.getMessage()).isEqualTo("Transfer successful");
-        softly.assertThat(response.getAmount()).isEqualTo(10000.00);
+        softly.assertThat(response.getAmount()).isEqualTo(sum);
         softly.assertThat(response.getSenderAccountId()).isEqualTo(account2.getId());
         softly.assertThat(response.getReceiverAccountId()).isEqualTo(account1.getId());
 
-
+        //тестовая проба использовать сравнение моделей, работает, но в текущих тестах не очень удобен
+        ModelAssertions.assertThatModels(request, response).match();
     }
 
     @Order(6)
     @Test
-    @DisplayName("Проверка балансов после перевода U2 → u1")
-        //проверка что транзакции содержат только успешные кейсы
-    void verificationBalanceU2AfterFirtsDeposit() {
-        List<Transaction> transactions = new TransactionRequester(
-                RequestSpecs.authAsUser(user2.getUsername(), password2),
-                ResponseSpecs.transactionsAccounts(), account2.getId()
-        )
-                .get()
-                .extract()
-                .jsonPath()
-                .getList(".", Transaction.class);
+    @DisplayName("Проверка транзакций user2 после перевода")
+    void verificationTransactionU2AfterFirstTransfer() {
+        List<Transaction> transactions = UserSteps.getTransactions(
+                user2.getUsername(),
+                password2,
+                account2.getId()
+        );
 
-        List<Transaction> transactionsSorted = transactions.stream()
+        List<Transaction> sorted = transactions.stream()
                 .sorted(Comparator.comparing(Transaction::getId))
                 .collect(Collectors.toList());
 
-        softly.assertThat(transactions).hasSize(4);
-        softly.assertThat(transactionsSorted.get(3).getType()).isEqualTo(TransactionType.TRANSFER_OUT.toString());
-        softly.assertThat(transactionsSorted.get(3).getAmount()).isEqualTo(10000.00);
-
-
+        softly.assertThat(transactions).hasSize(5);
+        softly.assertThat(sorted.get(4).getType()).isEqualTo(TransactionType.TRANSFER_OUT.toString());
+        softly.assertThat(sorted.get(4).getAmount()).isEqualTo(10000.0);
     }
 
     @Order(7)
     @Test
-    @DisplayName("Проверка балансов после перевода u2 → U1")
-        //проверка что транзакции содержат только успешные кейсы U1
-    void verificationBalanceU1AfterFirtsTransfer() {
+    @DisplayName("Проверка транзакций user1 после перевода")
+    void verificationTransactionU1AfterFirstTransfer() {
+        List<Transaction> transactions = UserSteps.getTransactions(
+                user1.getUsername(),
+                password,
+                account1.getId()
+        );
 
-        UserProfileResponse profile = new UserProfileRequester(
-                RequestSpecs.authAsUser(user1.getUsername(), password),
-                ResponseSpecs.requestReturnsOK())
-                .get()
-                .extract()
-                .as(UserProfileResponse.class);
+        List<Transaction> sorted = transactions.stream()
+                .sorted(Comparator.comparing(Transaction::getId))
+                .collect(Collectors.toList());
+
+        softly.assertThat(transactions).hasSize(1);
+        softly.assertThat(sorted.get(0).getType()).isEqualTo(TransactionType.TRANSFER_IN.toString());
+        softly.assertThat(sorted.get(0).getAmount()).isEqualTo(10000.0);
+    }
+
+
+    @Order(8)
+    @Test
+    @DisplayName("Проверка профиля user1 после перевода")
+    void verificationBalanceU1AfterFirstTransfer() {
+        UserProfileResponse profile = ProfileSteps.getProfile(
+                user1.getUsername(),
+                password
+        );
 
         softly.assertThat(profile.getId()).isEqualTo(user1.getId());
         softly.assertThat(profile.getUsername()).isEqualTo(user1.getUsername());
         softly.assertThat(profile.getRole()).isEqualTo("USER");
-
-
-    }
-
-    @Order(8)
-    @Test
-    @DisplayName("Не успешный трансфер мин сумма 10000.01")
-    void transfer() {
-        Double sum = 10000.01;
-        TransferRequest request = TransferRequest.builder()
-                .senderAccountId(account2.getId())
-                .receiverAccountId(account1.getId())
-                .amount(sum)
-                .build();
-
-        String response = new TransferRequester(
-                RequestSpecs.authAsUser(user2.getUsername(), password2),
-                ResponseSpecs.transferRejectedPlainText())
-                .post(request)
-                .extract()
-                .asString();
-
-        softly.assertThat(response).isEqualTo("Transfer amount cannot exceed 10000");
-
+        softly.assertThat(profile.getAccounts().get(0).getBalance()).isEqualTo(10000.0);
     }
 
     @Order(9)
     @Test
-    @DisplayName("Не успешный трансфер мин сумма -00000.01")
-    void transferNegativeSum() {
-        Double sum = -0000.01;
-        TransferRequest request = TransferRequest.builder()
-                .senderAccountId(account2.getId())
-                .receiverAccountId(account1.getId())
-                .amount(sum)
-                .build();
+    @DisplayName("Проверка профиля user2 после перевода")
+    void verificationBalanceU2AfterFirstTransfer() {
+        UserProfileResponse profile = ProfileSteps.getProfile(
+                user2.getUsername(),
+                password2
+        );
 
-        String response = new TransferRequester(
-                RequestSpecs.authAsUser(user2.getUsername(), password2),
-                ResponseSpecs.transferRejectedPlainText())
-                .post(request)
-                .extract()
-                .asString();
-
-        softly.assertThat(response).isEqualTo("Transfer amount must be at least 0.01");
-
+        softly.assertThat(profile.getId()).isEqualTo(user2.getId());
+        softly.assertThat(profile.getUsername()).isEqualTo(user2.getUsername());
+        softly.assertThat(profile.getRole()).isEqualTo("USER");
+        softly.assertThat(profile.getAccounts().get(0).getBalance()).isEqualTo(10000.0);
     }
 
     @Order(10)
     @Test
-    @DisplayName("Успешный трансфер мин сумма 0.01")
-    void transferMinValue() {
-        Double sum = 0.01;
-        TransferRequest request = TransferRequest.builder()
-                .senderAccountId(account2.getId())
-                .receiverAccountId(account1.getId())
-                .amount(sum)
-                .build();
-
-        TransferResponse response = new TransferRequester(
-                RequestSpecs.authAsUser(user2.getUsername(), password2),
-                ResponseSpecs.requestReturnsOK())
-                .post(request)
-                .extract()
-                .as(TransferResponse.class);
-
-        softly.assertThat(response.getMessage()).isEqualTo("Transfer successful");
-        softly.assertThat(response.getAmount()).isEqualTo(0.01);
-        softly.assertThat(response.getSenderAccountId()).isEqualTo(account2.getId());
-        softly.assertThat(response.getReceiverAccountId()).isEqualTo(account1.getId());
-
+    @DisplayName("Не успешный трансфер: сумма > 10000")
+    void transferAboveLimit() {
+        String error = UserSteps.makeTransferFails(
+                user2.getUsername(),
+                password2,
+                account2.getId(),
+                account1.getId(),
+                10000.01,
+                ResponseSpecs.transferRejectedPlainText()
+        );
+        softly.assertThat(error).isEqualTo("Transfer amount cannot exceed 10000");
     }
 
     @Order(11)
     @Test
-    @DisplayName("Проверка балансов после второго перевода u2 → U1")
-        //проверка что транзакции содержат только успешные кейсы U1
-    void verificationBalanceU1AfterSecondTransfer() {
-
-        UserProfileResponse profile = new UserProfileRequester(
-                RequestSpecs.authAsUser(user1.getUsername(), password),
-                ResponseSpecs.requestReturnsOK())
-                .get()
-                .extract()
-                .as(UserProfileResponse.class);
-        //запоминаем ответ значения баланса профиля
-        double balance = profile.getAccounts().get(0).getBalance();
+    @DisplayName("Проверка профиля user1 после неудачного перевода")
+    void verificationBalanceU1AfterFirstNegativeTransfer() {
+        UserProfileResponse profile = ProfileSteps.getProfile(
+                user1.getUsername(),
+                password
+        );
 
         softly.assertThat(profile.getId()).isEqualTo(user1.getId());
         softly.assertThat(profile.getUsername()).isEqualTo(user1.getUsername());
         softly.assertThat(profile.getRole()).isEqualTo("USER");
-        softly.assertThat(balance).isEqualTo(10000.01);
+        softly.assertThat(profile.getAccounts().get(0).getBalance()).isEqualTo(10000.0);
     }
 
     @Order(12)
     @Test
-    @DisplayName("12 Проверка балансов после второго перевода U2 → u1")
-        //проверка что транзакции содержат только успешные кейсы U1
-    void verificationBalanceU2AfterSecondTransfer() {
-
-        UserProfileResponse profile = new UserProfileRequester(
-                RequestSpecs.authAsUser(user2.getUsername(), password2),
-                ResponseSpecs.requestReturnsOK())
-                .get()
-                .extract()
-                .as(UserProfileResponse.class);
-        //запоминаем сортированный ответ транзакции первого аккаунта
-        AccountResponse account = profile.getAccountById(account2.getId())
-                .orElseThrow(() -> new RuntimeException("Нет аккаунтов"));
-        List<Transaction> sortedTransactions = account.getSortedTransactions();
-        Transaction lastTransaction = account.getLastTransaction()
-                .orElseThrow(() -> new RuntimeException("Нет транзакций"));
-
-        double balance = profile.getAccounts().get(0).getBalance();
+    @DisplayName("Проверка профиля user2 после неудачного перевода")
+    void verificationBalanceU2AfterFirstNegativeTransfer() {
+        UserProfileResponse profile = ProfileSteps.getProfile(
+                user2.getUsername(),
+                password2
+        );
 
         softly.assertThat(profile.getId()).isEqualTo(user2.getId());
         softly.assertThat(profile.getUsername()).isEqualTo(user2.getUsername());
         softly.assertThat(profile.getRole()).isEqualTo("USER");
-        softly.assertThat(balance).isEqualTo(4999.99);
-        softly.assertThat(lastTransaction.getAmount()).isEqualTo(0.01);
-        softly.assertThat(sortedTransactions.size()).isEqualTo(5);
-
-
+        softly.assertThat(profile.getAccounts().get(0).getBalance()).isEqualTo(10000.0);
     }
 
     @Order(13)
     @Test
-    @DisplayName("Не успешный трансфер > суммы на депозите")
-    void transferMoreBalance() {
-        Double sum = 5000.00;
-        TransferRequest request = TransferRequest.builder()
-                .senderAccountId(account2.getId())
-                .receiverAccountId(account1.getId())
-                .amount(sum)
-                .build();
-
-        String response = new TransferRequester(
-                RequestSpecs.authAsUser(user2.getUsername(), password2),
-                ResponseSpecs.depositRejectedPlainText())
-                .post(request)
-                .extract()
-                .asString();
-
-        softly.assertThat(response).isEqualTo("Invalid transfer: insufficient funds or invalid accounts");
-
+    @DisplayName("Не успешный трансфер мин сумма -00.01")
+    void transferNegativeSum() {
+        String error = UserSteps.makeTransferFails(
+                user2.getUsername(),
+                password2,
+                account2.getId(),
+                account1.getId(),
+                -0.01,
+                ResponseSpecs.transferRejectedPlainText()
+        );
+        softly.assertThat(error).isEqualTo("Transfer amount must be at least 0.01");
     }
+
     @Order(14)
     @Test
-    @DisplayName("User2 логинится и создаёт 2 счёт")
-    public void user1CreatesSecondAccount() {
-        //логин U2
-        RequestSpecification user2Spec = RequestSpecs.authAsUser(user2.getUsername(), password2);
+    @DisplayName("Успешный трансфер: минимальная сумма 0.01")
+    void transferMinValue() {
+        TransferResponse response = UserSteps.makeTransfer(
+                user2.getUsername(),
+                password2,
+                account2.getId(),
+                account1.getId(),
+                0.01
+        );
 
-
-        //создаем счет U2 аккаунт 2
-        account2_2 = new CreateAccountRequester(
-                user2Spec,
-                ResponseSpecs.entityWasCreated())
-                .post(null)
-                .extract()
-                .as(AccountResponse.class);
-
-
-        //мягкие проверки
-        softly.assertThat(account1.getAccountNumber()).startsWith("ACC");
-        softly.assertThat(account1.getBalance()).isEqualTo(0.0);
-        softly.assertThat(account1.getTransactions()).isEmpty();
+        softly.assertThat(response.getMessage()).isEqualTo("Transfer successful");
+        softly.assertThat(response.getAmount()).isEqualTo(0.01);
     }
+
     @Order(15)
     @Test
-    @DisplayName("Успешный трансфер мин сумма 0.01 c 1 аккаунта на 2 U2")
-    void transferMinValueTwoAccounts() {
-        Double sum = 0.01;
-        TransferRequest request = TransferRequest.builder()
-                .senderAccountId(account2.getId())
-                .receiverAccountId(account2_2.getId())
-                .amount(sum)
-                .build();
-
-        TransferResponse response = new TransferRequester(
-                RequestSpecs.authAsUser(user2.getUsername(), password2),
-                ResponseSpecs.requestReturnsOK())
-                .post(request)
-                .extract()
-                .as(TransferResponse.class);
-
-        softly.assertThat(response.getMessage()).isEqualTo("Transfer successful");
-        softly.assertThat(response.getAmount()).isEqualTo(sum);
-        softly.assertThat(response.getSenderAccountId()).isEqualTo(account2.getId());
-        softly.assertThat(response.getReceiverAccountId()).isEqualTo(account2_2.getId());
-
+    @DisplayName("Проверка баланса user1 после второго перевода и что негативный кеис не изменил баланс")
+    void verificationBalanceU1AfterSecondTransfer() {
+        UserProfileResponse profile = ProfileSteps.getProfile(
+                user1.getUsername(),
+                password
+        );
+        softly.assertThat(profile.getAccounts().get(0).getBalance()).isEqualTo(10000.01);
     }
+
     @Order(16)
     @Test
-    @DisplayName("12 Проверка балансов после второго перевода U2 → U2")
-        //проверка что транзакции содержат только успешные кейсы U1
-    void verificationBalanceU2AfterTransferTwoAccount() {
-
-        UserProfileResponse profile = new UserProfileRequester(
-                RequestSpecs.authAsUser(user2.getUsername(), password),
-                ResponseSpecs.requestReturnsOK())
-                .get()
-                .extract()
-                .as(UserProfileResponse.class);
-        //запоминаем сортированный ответ транзакции первого аккаунта
+    @DisplayName("Проверка баланса user2 после второго перевода и что негативный кеис не изменил баланс")
+    void verificationBalanceU2AfterSecondTransfer() {
+        UserProfileResponse profile = ProfileSteps.getProfile(
+                user2.getUsername(),
+                password2
+        );
         AccountResponse account = profile.getAccountById(account2.getId())
-                .orElseThrow(() -> new RuntimeException("Нет аккаунтов"));
-        List<Transaction> sortedTransactions = account.getSortedTransactions();
-        Transaction lastTransaction = account.getLastTransaction()
-                .orElseThrow(() -> new RuntimeException("Нет транзакций"));
+                .orElseThrow(() -> new RuntimeException("Аккаунт не найден"));
 
-        double balance = account.getBalance();
-
-        softly.assertThat(profile.getId()).isEqualTo(user2.getId());
-        softly.assertThat(profile.getUsername()).isEqualTo(user2.getUsername());
-        softly.assertThat(profile.getRole()).isEqualTo("USER");
-        softly.assertThat(balance).isEqualTo(4999.98);
-        softly.assertThat(lastTransaction.getAmount()).isEqualTo(0.01);
-        softly.assertThat(lastTransaction.getType()).isEqualTo(TransactionType.TRANSFER_OUT.toString());
-        softly.assertThat(sortedTransactions.size()).isEqualTo(6);
-
-
+        softly.assertThat(account.getBalance()).isEqualTo(9999.99);
+        softly.assertThat(account.getLastTransaction().get().getAmount()).isEqualTo(0.01);
+        softly.assertThat(account.getTransactions()).hasSize(6);
     }
+//        //запоминаем сортированный ответ транзакции первого аккаунта
+//        AccountResponse account = profile.getAccountById(account2.getId())
+//                .orElseThrow(() -> new RuntimeException("Нет аккаунтов"));
+//        List<Transaction> sortedTransactions = account.getSortedTransactions();
+//        Transaction lastTransaction = account.getLastTransaction()
+//                .orElseThrow(() -> new RuntimeException("Нет транзакций"));
+//
+//        double balance = profile.getAccounts().get(0).getBalance();
+//
+//        softly.assertThat(profile.getId()).isEqualTo(user2.getId());
+//        softly.assertThat(profile.getUsername()).isEqualTo(user2.getUsername());
+//        softly.assertThat(profile.getRole()).isEqualTo("USER");
+//        softly.assertThat(balance).isEqualTo(4999.99);
+//        softly.assertThat(lastTransaction.getAmount()).isEqualTo(0.01);
+//        softly.assertThat(sortedTransactions.size()).isEqualTo(5);
+
+
     @Order(17)
     @Test
-    @DisplayName("Успешный трансфер мин сумма 0.01 c 2 аккаунта U2 на аккаунт 1 U1")
-    void transferMinValueTwoAccountsOnUser1() {
-        Double sum = 0.01;
-        TransferRequest request = TransferRequest.builder()
-                .senderAccountId(account2_2.getId())
-                .receiverAccountId(account1.getId())
-                .amount(sum)
-                .build();
-
-        TransferResponse response = new TransferRequester(
-                RequestSpecs.authAsUser(user2.getUsername(), password2),
-                ResponseSpecs.requestReturnsOK())
-                .post(request)
-                .extract()
-                .as(TransferResponse.class);
-
-        softly.assertThat(response.getMessage()).isEqualTo("Transfer successful");
-        softly.assertThat(response.getAmount()).isEqualTo(sum);
-        softly.assertThat(response.getSenderAccountId()).isEqualTo(account2_2.getId());
-        softly.assertThat(response.getReceiverAccountId()).isEqualTo(account1.getId());
-
+    @DisplayName("Не успешный трансфер: недостаточно средств")
+    void transferMoreBalance() {
+        String error = UserSteps.makeTransferFails(
+                user2.getUsername(),
+                password2,
+                account2.getId(),
+                account1.getId(),
+                10000.00,
+                ResponseSpecs.depositRejectedPlainText() // или создай transferInsufficientFunds()
+        );
+        softly.assertThat(error).isEqualTo("Invalid transfer: insufficient funds or invalid accounts");
     }
+
     @Order(18)
     @Test
-    @DisplayName("12 Проверка балансов после второго перевода U2 → U2")
-        //проверка что транзакции содержат только успешные кейсы U1
-    void verificationBalanceU2Account2() {
-
-        UserProfileResponse profile = new UserProfileRequester(
-                RequestSpecs.authAsUser(user2.getUsername(), password),
-                ResponseSpecs.requestReturnsOK())
-                .get()
-                .extract()
-                .as(UserProfileResponse.class);
-        //запоминаем нужный аккаунт
-        AccountResponse accountFiltered = profile.getAccounts().stream()
-                .filter(account -> account.getId() == account2_2.getId()) // Или account2.getId()
-                .findFirst()
-                .orElseThrow(() -> new RuntimeException("Аккаунт с " + account2_2 + " не найден"));
-
-        List<Transaction> lastTransaction = accountFiltered.getSortedTransactions();
-
-        double balance = accountFiltered.getBalance();
-
-
-        softly.assertThat(profile.getId()).isEqualTo(user2.getId());
-        softly.assertThat(profile.getUsername()).isEqualTo(user2.getUsername());
-        softly.assertThat(profile.getRole()).isEqualTo("USER");
-        softly.assertThat(balance).isEqualTo(0);
-        softly.assertThat(lastTransaction.get(0).getAmount()).isEqualTo(0.01);
-        softly.assertThat(lastTransaction.get(0).getType()).isEqualTo(TransactionType.TRANSFER_OUT.toString());
-        softly.assertThat(accountFiltered.getTransactions().size()).isEqualTo(2);
-
-
+    @DisplayName("Проверка баланса user1 что негативный кеис не изменил баланс")
+    void verificationBalanceAfterNegativeTestU1() {
+        UserProfileResponse profile = ProfileSteps.getProfile(
+                user1.getUsername(),
+                password
+        );
+        softly.assertThat(profile.getAccounts().get(0).getBalance()).isEqualTo(10000.01);
     }
+
+    @Order(18)
+    @Test
+    @DisplayName("Проверка баланса user2 что негативный кеис не изменил баланс")
+    void verificationBalanceAfterNegativeTestU2() {
+        UserProfileResponse profile = ProfileSteps.getProfile(
+                user2.getUsername(),
+                password2
+        );
+        AccountResponse account = profile.getAccountById(account2.getId())
+                .orElseThrow(() -> new RuntimeException("Аккаунт не найден"));
+
+        softly.assertThat(account.getBalance()).isEqualTo(9999.99);
+        softly.assertThat(account.getLastTransaction().get().getAmount()).isEqualTo(0.01);
+        softly.assertThat(account.getTransactions()).hasSize(6);
+    }
+
+    @Order(18)
+    @Test
+    @DisplayName("User2 создаёт второй счёт")
+    public void user2CreatesSecondAccount() {
+        account2_2 = UserSteps.createAccount(
+                user2.getUsername(),
+                password2
+        );
+        softly.assertThat(account2_2.getBalance()).isEqualTo(0.0);
+    }
+
+    @Order(19)
+    @Test
+    @DisplayName("Проверка что 2 аккаунта у User2")
+    void verificationAccountUser2() {
+        UserProfileResponse profile = ProfileSteps.getProfile(
+                user2.getUsername(),
+                password2
+        );
+        AccountResponse mainAccount = profile.getAccountById(account2.getId())
+                .orElseThrow();
+        softly.assertThat(mainAccount.getBalance()).isEqualTo(9999.99);
+        softly.assertThat(mainAccount.getLastTransaction().get().getType()).isEqualTo(TransactionType.TRANSFER_OUT.toString());
+        softly.assertThat(profile.getAccounts().size()).isEqualTo(2);
+    }
+
+    @Order(20)
+    @Test
+    @DisplayName("Успешный трансфер со второго счёта user2 на user1")
+    void transferFromSecondAccountToUser2() {
+        TransferResponse response = UserSteps.makeTransfer(
+                user2.getUsername(),
+                password2,
+                account2.getId(),
+                account2_2.getId(),
+                0.01
+        );
+        softly.assertThat(response.getMessage()).isEqualTo("Transfer successful");
+    }
+
+
+    @Order(21)
+    @Test
+    @DisplayName("Проверка баланса основного аккаунта  user2 после внутреннего перевода")
+    void verificationBalanceU2MainAccount() {
+        UserProfileResponse profile = ProfileSteps.getProfile(
+                user2.getUsername(),
+                password2
+        );
+        AccountResponse mainAccount = profile.getAccountById(account2.getId())
+                .orElseThrow();
+        softly.assertThat(mainAccount.getBalance()).isEqualTo(9999.98);
+        softly.assertThat(mainAccount.getLastTransaction().get().getType())
+                .isEqualTo(TransactionType.TRANSFER_OUT.toString());
+    }
+
+
+    @Order(21)
+    @Test
+    @DisplayName("Проверка баланса второго аккаунта user2")
+    void verificationBalanceU2SecondAccount() {
+        UserProfileResponse profile = ProfileSteps.getProfile(
+                user2.getUsername(),
+                password2
+        );
+        AccountResponse secondAccount = profile.getAccountById(account2_2.getId())
+                .orElseThrow();
+        softly.assertThat(secondAccount.getBalance()).isEqualTo(0.01);
+        softly.assertThat(secondAccount.getTransactions()).hasSize(1);
+    }
+
+    @Order(22)
+    @Test
+    @DisplayName("Успешный трансфер со второго счёта user2 на user1")
+    void transferFromSecondAccountToUser1() {
+        TransferResponse response = UserSteps.makeTransfer(
+                user2.getUsername(),
+                password2,
+                account2_2.getId(),
+                account1.getId(),
+                0.01
+        );
+        softly.assertThat(response.getMessage()).isEqualTo("Transfer successful");
+    }
+
+    @Order(23)
+    @Test
+    @DisplayName("Проверка баланса второго счёта user2 после перевода")
+    void verificationSecondAccountAfterTransfer() {
+        UserProfileResponse profile = ProfileSteps.getProfile(
+                user2.getUsername(),
+                password2
+        );
+        AccountResponse secondAccount = profile.getAccountById(account2_2.getId())
+                .orElseThrow();
+        softly.assertThat(secondAccount.getBalance()).isEqualTo(0.0);
+        softly.assertThat(secondAccount.getLastTransaction().get().getType())
+                .isEqualTo(TransactionType.TRANSFER_OUT.toString());
+    }
+
+    @Order(24)
+    @Test
+    @DisplayName("Проверка баланса user1 после перевода")
+    void verificationBalanceUser1AfterTransfer() {
+        UserProfileResponse profile = ProfileSteps.getProfile(
+                user1.getUsername(),
+                password
+        );
+        AccountResponse Account = profile.getAccountById(account1.getId())
+                .orElseThrow();
+        softly.assertThat(Account.getBalance()).isEqualTo(10000.02);
+        softly.assertThat(Account.getLastTransaction().get().getType())
+                .isEqualTo(TransactionType.TRANSFER_IN.toString());
+        softly.assertThat(Account.getTransactions().size()).isEqualTo(3);
+    }
+
 }

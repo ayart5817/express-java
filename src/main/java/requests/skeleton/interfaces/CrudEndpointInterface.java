@@ -1,10 +1,12 @@
 package requests.skeleton.interfaces;
 
+import io.restassured.response.ValidatableResponse;
 import models.BaseModel;
 
-public interface CrudEndpointInterface  {
-    Object post(BaseModel model);
-    Object get(long id);
-    Object update(long id, BaseModel model);
-    Object delete(long id);
+public interface CrudEndpointInterface {
+    ValidatableResponse post(BaseModel model);
+    ValidatableResponse get(Long id);
+    ValidatableResponse update(long id, BaseModel model);
+    ValidatableResponse delete(long id);
+    ValidatableResponse put(BaseModel model); // ← только если нужен
 }

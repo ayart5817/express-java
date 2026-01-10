@@ -1,15 +1,10 @@
 package iteration_1;
 
-import generators.RandomData;
-import generators.RandomModelGenerator;
 import models.CreateUserRequest;
 import models.CreateUserResponse;
 import models.LoginUserRequest;
-import models.UserRole;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
-import requests.AdminCreateUserRequester;
-import requests.LoginUserRequester;
 import requests.skeleton.Endpoint;
 import requests.skeleton.requester.CrudRequester;
 import requests.skeleton.requester.ValidatedCrudRequester;
@@ -34,7 +29,7 @@ public class LoginUserTest extends BaseTest {
 
     @Test
     public void userCanGenerateAuthTokenTest() {
-        CreateUserRequest userRequest = AdminSteps.createUser();
+        CreateUserRequest userRequest = AdminSteps.createUser().getRequest();
 
         new CrudRequester(RequestSpecs.unauthSpec(),
                 Endpoint.LOGIN,

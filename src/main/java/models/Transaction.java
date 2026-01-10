@@ -6,10 +6,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.Comparator;
-import java.util.List;
-import java.util.stream.Collectors;
-
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -20,6 +16,7 @@ public class Transaction {
     private String type; // "DEPOSIT", "TRANSFER"
     private int relatedAccountId;
     private Long id;
+
 
     public Long getId() {
         return id;

@@ -7,6 +7,6 @@ import lombok.*;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class TransactionRequest extends BaseModel{
+public class TransactionRequest extends BaseModel {
     long transactionID;
 }

@@ -9,16 +9,15 @@ import specs.RequestSpecs;
 import specs.ResponseSpecs;
 
 public class AdminSteps {
-    public static CreateUserRequest createUser() {
-        CreateUserRequest userRequest =
-                RandomModelGenerator.generate(CreateUserRequest.class);
-
-        new ValidatedCrudRequester<CreateUserResponse>(
+    public static CreatedUser createUser() {
+        CreateUserRequest request = RandomModelGenerator.generate(CreateUserRequest.class);
+        CreateUserResponse response = new ValidatedCrudRequester<CreateUserResponse>(
                 RequestSpecs.adminSpec(),
                 Endpoint.ADMIN_USER,
-                ResponseSpecs.entityWasCreated())
-                .post(userRequest);
+                ResponseSpecs.entityWasCreated()
+        ).postAndExtract(request);
 
-        return userRequest;
+        return new CreatedUser(request, response);
     }
+
 }

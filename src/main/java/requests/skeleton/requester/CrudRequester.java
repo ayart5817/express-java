@@ -18,7 +18,7 @@ public class CrudRequester extends HttpRequest implements CrudEndpointInterface 
 
     @Override
     public ValidatableResponse post(BaseModel model) {
-        var body = model == null ? "": model;
+        var body = model == null ? "" : model;
         return given()
                 .spec(requestSpecification)
                 .body(body)
@@ -29,17 +29,50 @@ public class CrudRequester extends HttpRequest implements CrudEndpointInterface 
     }
 
     @Override
-    public Object get(long id) {
-        return null;
+    public ValidatableResponse get(Long id) {
+        return given()
+                .spec(requestSpecification)
+                .get(endpoint.getUrl(), id)
+                .then()
+                .assertThat()
+                .spec(responseSpecification);
+    }
+
+
+    @Override
+    public ValidatableResponse update(long id, BaseModel model) {
+        return given()
+                .spec(requestSpecification)
+                .body(model)
+                .put(endpoint.getUrl(), id)
+                .then()
+                .spec(responseSpecification);
     }
 
     @Override
-    public Object update(long id, BaseModel model) {
-        return null;
+    public ValidatableResponse delete(long id) {
+        return given()
+                .spec(requestSpecification)
+                .delete(endpoint.getUrl(), id)
+                .then()
+                .spec(responseSpecification);
     }
 
-    @Override
-    public Object delete(long id) {
-        return null;
+    public ValidatableResponse put(BaseModel model) {
+        return given()
+                .spec(requestSpecification)
+                .body(model)
+                .put(endpoint.getUrl())
+                .then()
+                .spec(responseSpecification);
     }
+
+    public ValidatableResponse get() {
+        return given()
+                .spec(requestSpecification)
+                .get(endpoint.getUrl())
+                .then()
+                .spec(responseSpecification);
+    }
+
 }

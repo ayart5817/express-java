@@ -2,7 +2,6 @@ package models;
 
 import lombok.*;
 
-import models.Transaction;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -14,11 +13,12 @@ import java.util.stream.Collectors;
 @NoArgsConstructor
 @Builder
 
-public class AccountResponse extends BaseModel  {
+public class AccountResponse extends BaseModel {
 
-    private int id;
+    private long id;
     private String accountNumber;
     private double balance;
+    private String username;
     private List<Transaction> transactions;
 
 
@@ -30,6 +30,7 @@ public class AccountResponse extends BaseModel  {
         return transactions.stream()
                 .max(Comparator.comparing(Transaction::getId));
     }
+
     // Метод для получения всех транзакций отсортированных по ID (новые сначала)
     public List<Transaction> getSortedTransactions() {
         if (transactions == null) {
@@ -40,7 +41,10 @@ public class AccountResponse extends BaseModel  {
                 .collect(Collectors.toList());
     }
 
-    public int getId() {
+
+    //была ошибка проект, не компилировался без строк
+
+    public long getId() {
         return id;
     }
 
