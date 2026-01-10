@@ -1,852 +1,375 @@
 package iteration_2;
 
-import io.restassured.RestAssured;
-import io.restassured.filter.log.RequestLoggingFilter;
-import io.restassured.filter.log.ResponseLoggingFilter;
-import io.restassured.http.ContentType;
-import org.apache.http.HttpStatus;
-import org.hamcrest.Matchers;
+import iteration_1.BaseTest;
+import models.*;
 import org.junit.jupiter.api.*;
+import requests.skeleton.Endpoint;
+import requests.skeleton.requester.ValidatedCrudRequester;
+import requests.steps.AdminSteps;
+import requests.steps.CreatedUser;
+import requests.steps.ProfileSteps;
+import requests.steps.UserSteps;
+import specs.RequestSpecs;
+import specs.ResponseSpecs;
 
+import java.util.Comparator;
 import java.util.List;
-
-import static io.restassured.RestAssured.given;
-import static org.hamcrest.Matchers.*;
+import java.util.stream.Collectors;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class DepositTest {
-    @BeforeAll
-    public static void setupRestAssured() {
-        RestAssured.filters(
-                List.of(new RequestLoggingFilter(),
-                        new ResponseLoggingFilter()));
+public class DepositTest extends BaseTest {
 
-    }
 
-    String userAuthHeader1 = "Basic QXlyYXQ6QXlyYXQxMjM0QA==";
-    String userAuthHeader2 = "Basic QXlyYXQyOkF5cmF0MTIzNDVA";
+    // Поля для сохранения состояния между тестами
+    private CreateUserResponse user1;
+    private CreateUserResponse user2;
+    private AccountResponse account1;
+    private AccountResponse account2;
+    private AccountResponse account2_2;
+    private String password;
+    private String password2;
+
 
     @Order(1)
     @Test
+    @DisplayName("Создание user1 админом ")
     public void user1GenerateTest() {
-        //создание пользователя
-        given()
-                .contentType(ContentType.JSON)
-                .header("Authorization", "Basic YWRtaW46YWRtaW4=")
-                .body("""
-                        {
-                        "username": "Ayrat",
-                        "password": "Ayrat1234@",
-                        "role": "USER"
-                        }
-                        """)
-                .post("http://localhost:4111/api/v1/admin/users")
-                .then()
-                .assertThat();
+        CreatedUser createUser = AdminSteps.createUser();
+        user1 = createUser.getResponse();
+        password = createUser.getRequest().getPassword();
+
+
+        account1 = new ValidatedCrudRequester<AccountResponse>(
+                RequestSpecs.authAsUser(user1.getUsername(), password),
+                Endpoint.ACCOUNTS,
+                ResponseSpecs.entityWasCreated()
+        ).postAndExtract(null);
+
+
+        softly.assertThat(account1.getAccountNumber()).startsWith("ACC");
+        softly.assertThat(account1.getBalance()).isEqualTo(0.0);
+        softly.assertThat(account1.getTransactions()).isEmpty();
     }
 
     @Order(2)
     @Test
-    public void user1GetTokenTest() {
-        userAuthHeader1 = given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .body("""
-                        {
-                        "username": "Ayrat",
-                        "password": "Ayrat1234@"
-                        }
-                        """)
-                .post("http://localhost:4111/api/v1/auth/login")
-                .then()
-                .assertThat()
-                .extract()
-                .header("Authorization");
+    @DisplayName("Проверка профиля user1 дефолтное состояние аакаунта")
+    void verificationDefaultU1() {
+        UserProfileResponse profile = ProfileSteps.getProfile(
+                user1.getUsername(),
+                password
+        );
 
-        //создаем аккаунт пользователю u1
-        given().contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthHeader1)
-                .post("http://localhost:4111/api/v1/accounts")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_CREATED)
-                .body("accountNumber", Matchers.equalTo("ACC1"))
-                .body("balance", Matchers.equalTo(0.0F))
-                .body("transactions", Matchers.empty())  ;
-
+        softly.assertThat(profile.getId()).isEqualTo(user1.getId());
+        softly.assertThat(profile.getUsername()).isEqualTo(user1.getUsername());
+        softly.assertThat(profile.getRole()).isEqualTo("USER");
+        softly.assertThat(profile.getAccounts().get(0).getTransactions()).isNullOrEmpty();
     }
+
 
     @Order(3)
     @Test
+    @DisplayName("Создаем User2")
     public void user2GenerateTest() {
-        //создание пользователя 2
-        given()
-                .contentType(ContentType.JSON)
-                .header("Authorization", "Basic YWRtaW46YWRtaW4=")
-                .body("""
-                        {
-                        "username": "Ayrat2",
-                        "password": "Ayrat12345@",
-                        "role": "USER"
-                        }
-                        """)
-                .post("http://localhost:4111/api/v1/admin/users")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_CREATED);
+        CreatedUser createUser = AdminSteps.createUser();
+        user2 = createUser.getResponse();
+        password2 = createUser.getRequest().getPassword();
+
+        account2 = new ValidatedCrudRequester<AccountResponse>(
+                RequestSpecs.authAsUser(user2.getUsername(), password2),
+                Endpoint.ACCOUNTS,
+                ResponseSpecs.entityWasCreated()
+        ).postAndExtract(null);
+
+        softly.assertThat(account2.getBalance()).isEqualTo(0.00);
     }
 
     @Order(4)
     @Test
-    //ТОКЕН ЮЗЕРА 2
-    public void user2CanGenerateAuthTokenTest() {
-        //получаем токен
-        userAuthHeader2 = given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .body("""
-                        {
-                          "username": "Ayrat2",
-                          "password": "Ayrat12345@"
-                        }
-                        """)
-                .post("http://localhost:4111/api/v1/auth/login")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .extract()
-                .header("Authorization");
-        //создаем аккаунт юзер 2
-        given().header("Authorization", userAuthHeader2)
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .post("http://localhost:4111/api/v1/accounts")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_CREATED);
+    @DisplayName("Проверка профиля user2 дефолтное состояние акаунта")
+    void verificationDefaultU2() {
+        UserProfileResponse profile = ProfileSteps.getProfile(
+                user2.getUsername(),
+                password2
+        );
 
+        softly.assertThat(profile.getId()).isEqualTo(user2.getId());
+        softly.assertThat(profile.getUsername()).isEqualTo(user2.getUsername());
+        softly.assertThat(profile.getRole()).isEqualTo("USER");
+        softly.assertThat(profile.getAccounts().get(0).getTransactions()).isNullOrEmpty();
     }
 
     @Order(5)
     @Test
-    //Проверка значения транзакции по умолчанию
-    public void checkDefaultValueTransactionU2() {
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthHeader2)
-                .get("http://localhost:4111/api/v1/accounts/2/transactions")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .body("$", empty());
+    @DisplayName("Успешный депозит 4999.99")
+    void depositBelowLimit() {
+        double amount = 4999.99;
+        AccountResponse response = UserSteps.makeDeposit(
+                user2.getUsername(), password2, account2.getId(), amount
+        );
+
+        softly.assertThat(response.getBalance()).isEqualTo(amount);
+        softly.assertThat(response.getTransactions()).hasSize(1);
+        softly.assertThat(response.getTransactions().get(0).getAmount()).isEqualTo(amount);
+        softly.assertThat(response.getTransactions().get(0).getType()).isEqualTo(TransactionType.DEPOSIT.toString());
     }
 
     @Order(6)
     @Test
-    //проверяем депозит на 4999.99 голд паф U2
-    public void deposit4999FoU2() {
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthHeader2)
-                .body("""
-                        {
-                         "id": 2,
-                         "balance": 4999.99
-                        }
-                        """)
-                .when()
-                .post("http://localhost:4111/api/v1/accounts/deposit")
-                .then()
-                .statusCode(HttpStatus.SC_OK);
+    @DisplayName("Проверка профиля user2 после депозита")
+    void verificationAfterDepositU2() {
+        UserProfileResponse profile = ProfileSteps.getProfile(
+                user2.getUsername(),
+                password2
+        );
+
+        softly.assertThat(profile.getId()).isEqualTo(user2.getId());
+        softly.assertThat(profile.getUsername()).isEqualTo(user2.getUsername());
+        softly.assertThat(profile.getRole()).isEqualTo("USER");
+        softly.assertThat(profile.getAccounts().get(0).getBalance()).isEqualTo(4999.99);
     }
 
     @Order(7)
     @Test
-    //Проверка состояния счета после транзакции 4999,99 U2
+    @DisplayName("Проверка транзакций user2 после депозита")
+    void verificationTransactionU1AfterFirstDeposit() {
+        List<Transaction> transactions = UserSteps.getTransactions(
+                user2.getUsername(),
+                password,
+                account2.getId()
+        );
 
-    public void ValueTransactionAfterDeposit4999U2() {
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthHeader2)
-                .get("http://localhost:4111/api/v1/accounts/2/transactions")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .body("$", hasSize(1))
-                .body("[0].amount", equalTo(4999.99f))
-                .body("[0].type", equalTo("DEPOSIT"))
-                .body("[0].relatedAccountId", equalTo(2));
+        List<Transaction> sorted = transactions.stream()
+                .sorted(Comparator.comparing(Transaction::getId))
+                .collect(Collectors.toList());
+
+        softly.assertThat(transactions).hasSize(1);
+        softly.assertThat(sorted.get(0).getType()).isEqualTo(TransactionType.DEPOSIT.toString());
+        softly.assertThat(sorted.get(0).getAmount()).isEqualTo(4999.99);
     }
 
     @Order(8)
     @Test
-    //проверяем депозит границу 5000 голд U2
-    public void deposit50000FoU2() {
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthHeader2)
-                .body("""
-                        {
-                         "id": 2,
-                         "balance": 5000
-                        }
-                        """)
-                .when()
-                .post("http://localhost:4111/api/v1/accounts/deposit")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .body("balance", equalTo(9999.99F))
-                .body("transactions.size()", equalTo(2))
-                .body("transactions[0].amount", equalTo(5000.0F))
-                .body("transactions[0].type", equalTo("DEPOSIT"))
-                .body("transactions[0].relatedAccountId", equalTo(2));
+    @DisplayName("Успешный депозит на 5000.00")
+    void depositExactLimit() {
+        double amount = 5000.00;
+        AccountResponse response = UserSteps.makeDeposit(
+                user2.getUsername(), password2, account2.getId(), amount
+        );
+
+        // Баланс = 4999.99 (после @Order(4)) + 5000.00 = 9999.99
+        softly.assertThat(response.getBalance()).isEqualTo(9999.99);
+        softly.assertThat(response.getTransactions()).hasSize(2); // две транзакции: 4999.99 + 5000.00
     }
 
     @Order(9)
     @Test
-    //проверяем депозит 5000.01 минимальная негативная граница
-    public void negativeDeposit1000FoU2() {
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthHeader2)
-                .body("""
-                        {
-                         "id": 2,
-                         "balance": 5000.01
-                        }
-                        """)
-                .when()
-                .post("http://localhost:4111/api/v1/accounts/deposit")
-                .then()
-                .statusCode(HttpStatus.SC_BAD_REQUEST)
-                .body(org.hamcrest.Matchers.containsString("Deposit amount cannot exceed 5000"));
+    @DisplayName("Проверка транзакций user2 после депозита ExactLimit")
+    void verificationTransactionU1AfterDepositExactLimit() {
+        List<Transaction> transactions = UserSteps.getTransactions(
+                user2.getUsername(),
+                password2,
+                account2.getId()
+        );
+
+        List<Transaction> sorted = transactions.stream()
+                .sorted(Comparator.comparing(Transaction::getId))
+                .collect(Collectors.toList());
+
+        softly.assertThat(transactions).hasSize(2);
+        softly.assertThat(sorted.get(0).getType()).isEqualTo(TransactionType.DEPOSIT.toString());
+        softly.assertThat(sorted.get(transactions.size() - 1).getAmount()).isEqualTo(5000.0);
     }
 
     @Order(10)
     @Test
-    //Проверка состояния счета после транзакции 5000.00 и 5000.01 U2
-    // ожидаем 9999.99
+    @DisplayName("Проверка профиля user2 после второго депозита")
+    void verificationAfterDepositStep2U2() {
+        UserProfileResponse profile = ProfileSteps.getProfile(
+                user2.getUsername(),
+                password2
+        );
 
-    public void ValueTransactionAfterDeposit5000and5001U2() {
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthHeader2)
-                .get("http://localhost:4111/api/v1/accounts/2/transactions")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .body("$", hasSize(2))
-                .body("[0].amount", equalTo(5000.0F))
-                .body("[0].type", equalTo("DEPOSIT"))
-                .body("[0].relatedAccountId", equalTo(2));
+        softly.assertThat(profile.getId()).isEqualTo(user2.getId());
+        softly.assertThat(profile.getUsername()).isEqualTo(user2.getUsername());
+        softly.assertThat(profile.getRole()).isEqualTo("USER");
+        softly.assertThat(profile.getAccounts().get(0).getBalance()).isEqualTo(9999.99);
     }
 
     @Order(11)
     @Test
-    //Проверим состояние счета не изменилось после негативного кейса с сумой 5000.01
-    public void getCustomerAccountsU2TEst() {
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthHeader2)
-                .get("http://localhost:4111/api/v1/customer/accounts")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                // Проверяем, что вернулись ровно 2 счёта
-                .body("$", hasSize(1))
-                // Проверка счёта ACC2
-                .body("[0].id", equalTo(2))
-                .body("[0].accountNumber", equalTo("ACC2"))
-                .body("[0].balance", equalTo(9999.99f))
-                .body("[0].transactions", hasSize(2));
+    @DisplayName("Не успешный депозит 5000.01")
+    void depositAboveLimit() {
+        String error = UserSteps.makeDepositFails(
+                user2.getUsername(), password2, account2.getId(), 5000.01
+        );
 
-
+        softly.assertThat(error).contains("Deposit amount cannot exceed 5000");
     }
 
     @Order(12)
     @Test
-    //проверяем депозит мин границу 0.01 U1
-    public void depositMin01BoundaryValueTest() {
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthHeader1)
-                .body("""
-                        {
-                         "id": 1,
-                         "balance": 0.01
-                        }
-                        """)
-                .when()
-                .post("http://localhost:4111/api/v1/accounts/deposit")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK);
+    @DisplayName("Проверка профиля user2 после неуспешного депозита")
+    void verificationInvalidDepositStep1U2() {
+        UserProfileResponse profile = ProfileSteps.getProfile(
+                user2.getUsername(),
+                password2
+        );
+
+        softly.assertThat(profile.getId()).isEqualTo(user2.getId());
+        softly.assertThat(profile.getUsername()).isEqualTo(user2.getUsername());
+        softly.assertThat(profile.getRole()).isEqualTo("USER");
+        softly.assertThat(profile.getAccounts().get(0).getBalance()).isEqualTo(9999.99);
     }
 
     @Order(13)
     @Test
-    //проверяем депозит на 0.00
-    public void depositMin0BoundaryValueTest() {
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthHeader1)
-                .body("""
-                        {
-                         "id": 1,
-                         "balance": 0.00
-                        }
-                        """)
-                .when()
-                .post("http://localhost:4111/api/v1/accounts/deposit")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_BAD_REQUEST)
-                .body(org.hamcrest.Matchers.containsString("Deposit amount must be at least 0.01"));
-
+    @DisplayName("Отклонение депозита при сумме 0.00")
+    void depositZero() {
+        double amount = 0.00;
+        String error = UserSteps.makeDepositFails(
+                user2.getUsername(), password2, account2.getId(), amount
+        );
+        softly.assertThat(error).contains("Deposit amount must be at least 0.01");
     }
 
     @Order(14)
     @Test
-    //проверяем депозит на -0.01
-    public void depositMinNegativeBoundaryValueTest() {
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthHeader1)
-                .body("""
-                        {
-                         "id": 1,
-                         "balance": -0.01
-                        }
-                        """)
-                .when()
-                .post("http://localhost:4111/api/v1/accounts/deposit")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_BAD_REQUEST)
-                .body(org.hamcrest.Matchers.containsString("Deposit amount must be at least 0.01"));
+    @DisplayName("Проверка баланса профиля user2 после неуспешного депозита")
+    void verificationInvalidDepositZeroU2() {
+        UserProfileResponse profile = ProfileSteps.getProfile(
+                user2.getUsername(),
+                password2
+        );
 
+        softly.assertThat(profile.getId()).isEqualTo(user2.getId());
+        softly.assertThat(profile.getUsername()).isEqualTo(user2.getUsername());
+        softly.assertThat(profile.getRole()).isEqualTo("USER");
+        softly.assertThat(profile.getAccounts().get(0).getBalance()).isEqualTo(9999.99);
     }
 
     @Order(15)
     @Test
-    //проверяем депозит на 1000 чужой аккаунт
-    public void depositNegativeAlenAccountTest() {
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthHeader1)
-                .body("""
-                        {
-                         "id": 2,
-                         "balance": 1000
-                        }
-                        """)
-                .when()
-                .post("http://localhost:4111/api/v1/accounts/deposit")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_FORBIDDEN)
-                .body(org.hamcrest.Matchers.containsString("Unauthorized access to account"));
+    @DisplayName("Проверка транзакций user2 после 2-х неуспешных кейсов")
+    void verificationTransactionU1AfterNegativeTests() {
+        List<Transaction> transactions = UserSteps.getTransactions(
+                user2.getUsername(),
+                password2,
+                account2.getId()
+        );
 
+        List<Transaction> sorted = transactions.stream()
+                .sorted(Comparator.comparing(Transaction::getId))
+                .collect(Collectors.toList());
+
+        softly.assertThat(transactions).hasSize(2);
+        softly.assertThat(sorted.get(0).getType()).isEqualTo(TransactionType.DEPOSIT.toString());
+        softly.assertThat(sorted.get(transactions.size() - 1).getAmount()).isEqualTo(5000.0);
+        ;
     }
+
 
     @Order(16)
     @Test
-    //Проверим состояние счета после кейсов для U1
-    // expect 0.01
-    public void getCustomerAccountsAfterTestsU1TEst() {
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthHeader1)
-                .get("http://localhost:4111/api/v1/customer/accounts")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                // Проверяем, что вернулись ровно 2 счёта
-                .body("$", hasSize(1))
-                // Проверка счёта ACC2
-                .body("[0].id", equalTo(1))
-                .body("[0].accountNumber", equalTo("ACC1"))
-                .body("[0].balance", equalTo(0.01f))
-                .body("[0].transactions", hasSize(1));
-
-
+    @DisplayName("Отклонение депозита при сумме -0.01")
+    void depositNegative() {
+        double amount = -0.00;
+        String error = UserSteps.makeDepositFails(
+                user2.getUsername(), password2, account2.getId(), amount
+        );
+        softly.assertThat(error).contains("Deposit amount must be at least 0.01");
     }
 
     @Order(17)
     @Test
-    //проверяем трансфер Сумма больше счета u1-> u2 минимальная гораница
-    public void TransferTransferMoreBalanceMinBoundaryU1Test() {
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthHeader1)
-                .body("""
-                        {
-                          "senderAccountId": 1,
-                          "receiverAccountId": 2,
-                          "amount": 0.02
-                        }
-                        """)
-                .when()
-                .post("http://localhost:4111/api/v1/accounts/transfer")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_BAD_REQUEST)
-                .body(org.hamcrest.Matchers.containsString("Invalid transfer: insufficient funds or invalid accounts"));
+    @DisplayName("Проверка баланса профиля user2 после depositNegativeSum")
+    void verificationInvalidDepositNegativeSumU2() {
+        UserProfileResponse profile = ProfileSteps.getProfile(
+                user2.getUsername(),
+                password2
+        );
 
-
+        softly.assertThat(profile.getId()).isEqualTo(user2.getId());
+        softly.assertThat(profile.getUsername()).isEqualTo(user2.getUsername());
+        softly.assertThat(profile.getRole()).isEqualTo("USER");
+        softly.assertThat(profile.getAccounts().get(0).getBalance()).isEqualTo(9999.99);
     }
 
     @Order(18)
     @Test
-    //проверяем трансфер Сумма больше счета u1-> u2 максимальная граница 9999.99 депозит трансфер 10к
-    public void TransferTransferMoreBalanceMaxBoundaryU1Test() {
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthHeader1)
-                .body("""
-                        {
-                          "senderAccountId": 1,
-                          "receiverAccountId": 2,
-                          "amount": 1
-                        }
-                        """)
-                .when()
-                .post("http://localhost:4111/api/v1/accounts/transfer")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_BAD_REQUEST)
-                .body(org.hamcrest.Matchers.containsString("Invalid transfer: insufficient funds or invalid accounts"));
-
-
+    @DisplayName("Отклонение депозита Unauthorized")
+    void depositToForeignAccount() {
+        double amount = 1000.00;
+        String error = UserSteps.makeDepositForbidden(
+                user1.getUsername(), user1.getPassword(), account2.getId(), amount
+        );
+        softly.assertThat(error).isEqualTo("Unauthorized access to account");
     }
 
     @Order(19)
     @Test
-    //Подготовка депозита 10к
-    public void deposit5000FoU2() {
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthHeader2)
-                .body("""
-                        {
-                         "id": 2,
-                         "balance": 5000
-                        }
-                        """)
-                .when()
-                .post("http://localhost:4111/api/v1/accounts/deposit")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK);
+    @DisplayName("Проверка баланса профиля user2 после depositToForeignAccount")
+    void verificationInvalidDepositToForeignAccountU2() {
+        UserProfileResponse profile = ProfileSteps.getProfile(
+                user2.getUsername(),
+                password2
+        );
 
+        softly.assertThat(profile.getId()).isEqualTo(user2.getId());
+        softly.assertThat(profile.getUsername()).isEqualTo(user2.getUsername());
+        softly.assertThat(profile.getRole()).isEqualTo("USER");
+        softly.assertThat(profile.getAccounts().get(0).getBalance()).isEqualTo(9999.99);
     }
 
     @Order(20)
     @Test
-    //Подготовка депозита 15к
-    public void deposit10000FoU2() {
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthHeader2)
-                .body("""
-                        {
-                         "id": 2,
-                         "balance": 5000
-                        }
-                        """)
-                .when()
-                .post("http://localhost:4111/api/v1/accounts/deposit")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK);
+    @DisplayName("Проверка баланса профиля user1 после depositToForeignAccount")
+    void verificationInvalidDepositToForeignAccountU1() {
+        UserProfileResponse profile = ProfileSteps.getProfile(
+                user1.getUsername(),
+                password
+        );
 
+        softly.assertThat(profile.getId()).isEqualTo(user1.getId());
+        softly.assertThat(profile.getUsername()).isEqualTo(user1.getUsername());
+        softly.assertThat(profile.getRole()).isEqualTo("USER");
+        softly.assertThat(profile.getAccounts().get(0).getBalance()).isEqualTo(0);
     }
 
     @Order(21)
     @Test
-    //Подготовка депозита 20к
-    public void deposit15000FoU2() {
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthHeader2)
-                .body("""
-                        {
-                         "id": 2,
-                         "balance": 5000
-                        }
-                        """)
-                .when()
-                .post("http://localhost:4111/api/v1/accounts/deposit")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .body("balance", equalTo(24999.99F))
-                .body("transactions.size()", equalTo(5))
-                .body("transactions[0].amount", equalTo(5000.0f))
-                .body("transactions[0].type", equalTo("DEPOSIT"))
-                .body("transactions[0].relatedAccountId", equalTo(1));
+    @DisplayName("Успешный депозит на 0.01")
+    void depositMinLimit() {
+        double amount = 0.01;
+        AccountResponse response = UserSteps.makeDeposit(
+                user2.getUsername(), password2, account2.getId(), 0.01
+        );
+        softly.assertThat(response.getBalance()).isEqualTo(10000.0); // 9999.99 + 0.01
+        softly.assertThat(response.getTransactions()).hasSize(3);
     }
 
     @Order(22)
     @Test
-    //проверяем трансфер на 10000.01 u2-> u1
-    public void TransferNegativeMaxBoundaryTest() {
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthHeader2)
-                .body("""
-                        {
-                          "senderAccountId": 2,
-                          "receiverAccountId": 1,
-                          "amount": 10000.01
-                        }
-                        """)
-                .when()
-                .post("http://localhost:4111/api/v1/accounts/transfer")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_BAD_REQUEST)
-                .body(org.hamcrest.Matchers.containsString("Transfer amount cannot exceed 10000"));
+    @DisplayName("Итоговое состояние счётов u2")
+    void verificationBalanceU2() {
+        List<Transaction> transactions = UserSteps.getTransactions(
+                user2.getUsername(), password2, account2.getId()
+        );
+
+        softly.assertThat(transactions).hasSize(3);
+        softly.assertThat(transactions.get(0).getType()).isEqualTo(TransactionType.DEPOSIT.toString());
+        softly.assertThat(transactions.get(0).getRelatedAccountId()).isEqualTo(account2.getId());
     }
 
     @Order(23)
     @Test
-    //проверяем трансфер на 10000.00 u2-> u1
-    public void TransferMaxBoundaryTest() {
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthHeader2)
-                .body("""
-                        {
-                          "senderAccountId": 2,
-                          "receiverAccountId": 1,
-                          "amount": 10000.00
-                        }
-                        """)
-                .when()
-                .post("http://localhost:4111/api/v1/accounts/transfer")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .body("amount", equalTo(10000.0f))
-                .body("receiverAccountId", equalTo(1f))
-                .body("senderAccountId", equalTo( 2f))
-                .body("message", equalTo("Transfer successful"));
-
-
+    @DisplayName("Итоговое состояние счётов u1")
+    void verificationBalanceU1() {
+        List<Transaction> transactions = UserSteps.getTransactions(
+                user1.getUsername(), user1.getPassword(), account1.getId()
+        );
+        softly.assertThat(transactions).hasSize(0);
     }
-
-    @Order(24)
-    @Test
-    //Проверим состояние счета после кейсов U2-U1
-    // expect 10000.01
-    public void getCustomerAccountsAfterTransferU1TEst() {
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthHeader1)
-                .get("http://localhost:4111/api/v1/customer/accounts")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                // Проверяем, что вернулись ровно 3 счёта
-                .body("$", hasSize(1))
-                // Проверка счёта ACC2
-                .body("[0].id", equalTo(1))
-                .body("[0].accountNumber", equalTo("ACC1"))
-                .body("[0].balance", equalTo(10000.01f))
-                .body("[0].transactions", hasSize(2));
-    }
-
-    @Order(25)
-    @Test
-    //проверяем трансфер на -0.01 u1-> u2
-    public void TransferNegativeMinBoundaryTest() {
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthHeader1)
-                .body("""
-                        {
-                          "senderAccountId": 1,
-                          "receiverAccountId": 2,
-                          "amount": -0.01
-                        }
-                        """)
-                .when()
-                .post("http://localhost:4111/api/v1/accounts/transfer")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_BAD_REQUEST)
-                .body(org.hamcrest.Matchers.containsString("Transfer amount must be at least 0.01"));
-
-
-    }
-
-    @Order(26)
-    @Test
-    //проверяем трансфер перевода самому себе (должен быть запрет)
-    public void TransferToHimselfTest() {
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthHeader1)
-                .body("""
-                        {
-                          "senderAccountId": 1,
-                          "receiverAccountId": 1,
-                          "amount": 1
-                        }
-                        """)
-                .when()
-                .post("http://localhost:4111/api/v1/accounts/transfer")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_BAD_REQUEST)
-                .body(org.hamcrest.Matchers.containsString("Invalid transfer: insufficient funds or invalid accounts"));
-
-    }
-
-    @Order(27)
-    @Test
-    //Проверим состояние счета после кейсов U2
-    // expect 14999.99
-    public void getCustomerAccountsAfterTransferU2TEst() {
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthHeader2)
-                .get("http://localhost:4111/api/v1/customer/accounts")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                // Проверяем, что вернулись ровно 3 счёта
-                .body("$", hasSize(1))
-                // Проверка счёта ACC2
-                .body("[0].id", equalTo(2))
-                .body("[0].accountNumber", equalTo("ACC2"))
-                .body("[0].balance", equalTo(14999.99f))
-                .body("[0].transactions", hasSize(6));
-
-
-    }
-
-    @Order(28)
-    @Test
-    //проверяем изменение профиля для юзера 2 15 символов
-    public void changeProfilePositiveU2Test() {
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthHeader2)
-                .body("""
-                        {
-                          "name": "Qwertyu Iopasdf"
-                        }
-                        """)
-                .when()
-                .put("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .body("message", containsString("Profile updated successfully"))
-                .body("customer.id", equalTo(2))
-                .body("customer.username", equalTo("Ayrat2"))
-                .body("customer.name", equalTo("Qwertyu Iopasdf"))
-                .body("customer.accounts.size()", greaterThan(0));
-
-    }
-
-    @Order(29)
-    @Test
-    public void getaProfileAfterUpdateNameTest() {
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthHeader2)
-                .when()
-                .get("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .body("id", equalTo(2))
-                .body("username", equalTo("Ayrat2"))
-                .body("name", equalTo("Qwertyu Iopasdf"))
-                .body("role", equalTo("USER"))
-                .body("password", not(emptyOrNullString()));
-    }
-
-    @Order(30)
-    @Test
-    //проверяем изменение профиля для юзера имя 2 символа
-    public void changeProfileThueSimbolU2Test() {
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthHeader2)
-                .body("""
-                        {
-                          "name": "m r"
-                        }
-                        """)
-                .when()
-                .put("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK);
-
-
-    }
-
-    @Order(31)
-    @Test
-    public void getaProfileAfterUpdateNameTwoSimbolTest() {
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthHeader2)
-                .when()
-                .get("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .body("id", equalTo(2))
-                .body("username", equalTo("Ayrat2"))
-                .body("name", equalTo("m r"))
-                .body("role", equalTo("USER"))
-                .body("password", not(emptyOrNullString()));
-    }
-
-
-    @Order(32)
-    @Test
-    //проверяем изменение профиля для юзера 2 пусто
-    public void negativeChangeProfileU2() {
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthHeader2)
-                .body("""
-                        {
-                          "name": ""
-                        }
-                        """)
-                .when()
-                .put("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_BAD_REQUEST)
-                .body(org.hamcrest.Matchers.containsString("Name must contain two words with letters only"));
-
-
-    }
-
-    @Order(33)
-    @Test
-    //проверяем что имя не изменилось поле ошибки
-    public void getProfileAfterNotUpdateNameTest() {
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthHeader2)
-                .when()
-                .get("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .body("id", equalTo(2))
-                .body("username", equalTo("Ayrat2"))
-                .body("name", equalTo("m r"))
-                .body("role", equalTo("USER"))
-                .body("password", not(emptyOrNullString()));
-    }
-
-    @Order(34)
-    @Test
-    //проверяем изменение профиля для юзера 2 цифры в имени
-    public void negativeChangeProfileHaveNumbersU2() {
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthHeader2)
-                .body("""
-                        {
-                          "name": "a 2"
-                        }
-                        """)
-                .when()
-                .put("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_BAD_REQUEST)
-                .body(org.hamcrest.Matchers.containsString("Name must contain two words with letters only"));
-
-
-    }
-
-    @Order(35)
-    @Test
-    //проверяем изменение профиля для юзера максимально длинное имена
-    public void maxLengNegativeUserNameU2Test() {
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthHeader2)
-                .body("""
-                        {
-                          "name": "aaaaaaaaaaaaaa bbbbbbddddddddddddddddddddddddddddddddbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbjjjjjjjjjjjjjjjjjjjjjjjjjjj"
-                        }
-                        """)
-                .when()
-                .put("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_BAD_REQUEST)
-                .body("message", org.hamcrest.Matchers.containsString("Name must contain two words with letters only"));
-
-
-    }
-
-    @Order(36)
-    @Test
-    public void getaProfileAfterNotUpdateNameAfterNegativeTest() {
-        given()
-                .contentType(ContentType.JSON)
-                .accept(ContentType.JSON)
-                .header("Authorization", userAuthHeader2)
-                .when()
-                .get("http://localhost:4111/api/v1/customer/profile")
-                .then()
-                .assertThat()
-                .statusCode(HttpStatus.SC_OK)
-                .body("id", equalTo(2))
-                .body("username", equalTo("Ayrat2"))
-                .body("name", equalTo("m r"))
-                .body("role", equalTo("USER"))
-                .body("password", not(emptyOrNullString()));
-    }
-
 
 }

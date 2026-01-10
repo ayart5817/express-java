@@ -1,0 +1,26 @@
+package iteration_1;
+
+import models.CreateUserRequest;
+import org.junit.jupiter.api.Test;
+import requests.skeleton.Endpoint;
+import requests.skeleton.requester.CrudRequester;
+import requests.steps.AdminSteps;
+import specs.RequestSpecs;
+import specs.ResponseSpecs;
+
+public class CreateAccountTest extends BaseTest {
+
+
+    @Test
+    public void userCanCreateAccountTest() {
+        CreateUserRequest userRequest = AdminSteps.createUser().getRequest();
+
+        new CrudRequester(RequestSpecs.authAsUser(userRequest.getUsername(), userRequest.getPassword()),
+                Endpoint.ACCOUNTS,
+                ResponseSpecs.entityWasCreated())
+                .post(null);
+        // запросить все аккаунты пользователя и проверить, что наш аккаунт там
+
+
+    }
+}
