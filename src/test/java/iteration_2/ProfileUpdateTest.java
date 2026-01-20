@@ -1,6 +1,6 @@
 package iteration_2;
 
-import iteration_1.BaseTest;
+import iteration_1.api.BaseTest;
 import models.*;
 import models.comparison.ModelAssertions;
 import org.junit.jupiter.api.*;
