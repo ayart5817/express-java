@@ -1,16 +1,16 @@
 package iteration_2.api;
 
+import api.models.*;
+import api.requests.skeleton.Endpoint;
+import api.requests.skeleton.requester.ValidatedCrudRequester;
+import api.requests.steps.AdminSteps;
+import api.requests.steps.CreatedUser;
+import api.requests.steps.ProfileSteps;
+import api.requests.steps.UserSteps;
+import api.specs.RequestSpecs;
+import api.specs.ResponseSpecs;
 import iteration_1.api.BaseTest;
-import models.*;
 import org.junit.jupiter.api.*;
-import requests.skeleton.Endpoint;
-import requests.skeleton.requester.ValidatedCrudRequester;
-import requests.steps.AdminSteps;
-import requests.steps.CreatedUser;
-import requests.steps.ProfileSteps;
-import requests.steps.UserSteps;
-import specs.RequestSpecs;
-import specs.ResponseSpecs;
 
 import java.util.Comparator;
 import java.util.List;
@@ -38,7 +38,6 @@ public class DepositTest extends BaseTest {
         CreatedUser createUser = AdminSteps.createUser();
         user1 = createUser.getResponse();
         password = createUser.getRequest().getPassword();
-
 
         account1 = new ValidatedCrudRequester<AccountResponse>(
                 RequestSpecs.authAsUser(user1.getUsername(), password),

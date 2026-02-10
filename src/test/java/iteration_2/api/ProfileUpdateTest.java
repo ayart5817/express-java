@@ -1,13 +1,13 @@
 package iteration_2.api;
 
+import api.models.*;
 import iteration_1.api.BaseTest;
-import models.*;
-import models.comparison.ModelAssertions;
+import api.models.comparison.ModelAssertions;
 import org.junit.jupiter.api.*;
-import requests.steps.AdminSteps;
-import requests.steps.CreatedUser;
-import requests.steps.ProfileSteps;
-import requests.steps.UserSteps;
+import api.requests.steps.AdminSteps;
+import api.requests.steps.CreatedUser;
+import api.requests.steps.ProfileSteps;
+import api.requests.steps.UserSteps;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)

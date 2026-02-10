@@ -1,17 +1,17 @@
 package iteration_2.api;
 
+import api.models.*;
+import api.models.comparison.ModelAssertions;
+import api.requests.skeleton.Endpoint;
+import api.requests.skeleton.requester.ValidatedCrudRequester;
+import api.requests.steps.AdminSteps;
+import api.requests.steps.CreatedUser;
+import api.requests.steps.ProfileSteps;
+import api.requests.steps.UserSteps;
+import api.specs.RequestSpecs;
+import api.specs.ResponseSpecs;
 import iteration_1.api.BaseTest;
-import models.*;
-import models.comparison.ModelAssertions;
 import org.junit.jupiter.api.*;
-import requests.skeleton.Endpoint;
-import requests.skeleton.requester.ValidatedCrudRequester;
-import requests.steps.AdminSteps;
-import requests.steps.CreatedUser;
-import requests.steps.ProfileSteps;
-import requests.steps.UserSteps;
-import specs.RequestSpecs;
-import specs.ResponseSpecs;
 
 import java.util.Comparator;
 import java.util.List;
@@ -20,7 +20,6 @@ import java.util.stream.Collectors;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class TransferTest extends BaseTest {
-
 
     // Поля для сохранения состояния между тестами
     private CreateUserResponse user1;
