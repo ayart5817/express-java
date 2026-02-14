@@ -1,10 +1,9 @@
 package iteration_2.ui;
 
-import api.models.AccountResponse;
 import api.models.CreateUserRequest;
-import api.requests.steps.AdminSteps;
-import api.requests.steps.CreatedUser;
 import api.requests.steps.UserSteps;
+import iteration_1.common.annotations.UserSession;
+import iteration_1.storage.SessionStorage;
 import iteration_1.ui.BaseUiTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,20 +16,19 @@ public class UIUserTransferTest extends BaseUiTest {
 
     @Test
     @DisplayName("Успешный трансфер между пользователями")
+    @UserSession(value = 2, auth = 1)
     public void userCanTransferMoneyToAnotherUser() {
         // ШАГ 1: Создаём двух пользователей
-        CreateUserRequest user1 = AdminSteps.createUser().getRequest();
-        CreateUserRequest user2 = AdminSteps.createUser().getRequest();
+        CreateUserRequest user1 = SessionStorage.getUser(1);
+        CreateUserRequest user2 = SessionStorage.getUser(2);
 
         // ШАГ 2: Пополняем счёт user1 через API
-
-        authAsUser(user1);
         new UserDashboard().open().createNewAccount();
         String account1 = new UserSteps(user1.getUsername(), user1.getPassword()).getAccountNumber();
         long accountUser1ID = new UserSteps(user1.getUsername(), user1.getPassword()).getFirstAccountID();
         UserSteps.makeDeposit(user1.getUsername(), user1.getPassword(), accountUser1ID, 5000);
 
-        // ШАГ 3: Создаём счёт у user2
+        // ШАГ 3: Создаём счёт у user2 API
         String account2 = UserSteps.createAccount(user2.getUsername(), user2.getPassword()).getAccountNumber();
 
         // ШАГ 4: Выполняем трансфер через UI
@@ -57,30 +55,24 @@ public class UIUserTransferTest extends BaseUiTest {
 
     @Test
     @DisplayName("Негативный: трансфер > 10000")
+    @UserSession(value = 2, auth = 1)
     public void userCannotTransferAboveLimit() {
-        CreatedUser user1All = AdminSteps.createUser();
-        CreatedUser user2All = AdminSteps.createUser();
-        CreateUserRequest user1 = user1All.getRequest();
-        CreateUserRequest user2 = user2All.getRequest();
-
-        // Создаём и пополняем счёт user1 через API
-        AccountResponse account1 = UserSteps.createAccount(user1.getUsername(), user1.getPassword());
-        UserSteps.makeDepositTo2000(user1.getUsername(), user1.getPassword(), account1.getId(), 5000.0);
-
+        CreateUserRequest user1 = SessionStorage.getUser(1);
+        CreateUserRequest user2 = SessionStorage.getUser(2);
+        String account1 = UserSteps.createAccount(user1.getUsername(), user1.getPassword()).getAccountNumber();
+        String account2 = UserSteps.createAccount(user1.getUsername(), user1.getPassword()).getAccountNumber();
+        //  пополняем счёт user1 через API
+        new UserSteps(user1.getUsername(), user2.getPassword()).makeDeposit20000();
         // Создаём счёт user2 через API
-        AccountResponse account2 = UserSteps.createAccount(user2.getUsername(), user2.getPassword());
-
-        // Авторизуемся в UI как user1
-        authAsUser(user1);
-
+        UserSteps.createAccount(user2.getUsername(), user2.getPassword());
         // Выполняем трансфер через UI
         new TransferPage().open()
-                .selectSenderAccount(account1.getAccountNumber())
-                .enterRecipient(account2.getAccountNumber())
+                .selectSenderAccount(account1)
+                .enterRecipient(account2)
                 .enterAmount(10001.0)
                 .confirm()
                 .sendTransfer();
-
+        //проверяем аллерт
         String alertText = getAlertTextAndAccept();
         assertThat(alertText).contains("❌ Error: Transfer amount cannot exceed 10000");
 

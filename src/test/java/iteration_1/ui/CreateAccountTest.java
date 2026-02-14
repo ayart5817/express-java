@@ -11,6 +11,8 @@ import api.specs.RequestSpecs;
 import api.specs.ResponseSpecs;
 import com.codeborne.selenide.Selectors;
 import com.codeborne.selenide.Selenide;
+import iteration_1.common.annotations.UserSession;
+import iteration_1.storage.SessionStorage;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.Alert;
 import ui.pages.BankAlert;
@@ -26,14 +28,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class CreateAccountTest extends BaseUiTest {
     @Test
+    @UserSession
     public void userCanCreateAccountTest() {
-        CreateUserRequest user = AdminSteps.createUser().getRequest();
-
-        authAsUser(user);
+        CreateUserRequest user = SessionStorage.getUser(1);
 
         new UserDashboard().open().createNewAccount();
 
-        List<CreateAccountResponse> createdAccounts = new UserSteps(user.getUsername(), user.getPassword())
+        List<CreateAccountResponse> createdAccounts = SessionStorage.getSteps()
                 .getAllAccounts();
 
         assertThat(createdAccounts).hasSize(1);

@@ -1,9 +1,9 @@
 package iteration_2.ui;
 
 import api.models.CreateUserRequest;
-import api.requests.steps.AdminSteps;
-import api.requests.steps.CreatedUser;
 import api.requests.steps.UserSteps;
+import iteration_1.common.annotations.UserSession;
+import iteration_1.storage.SessionStorage;
 import iteration_1.ui.BaseUiTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,31 +16,25 @@ public class UIDepositTest extends BaseUiTest {
 
     @Test
     @DisplayName("Успешный депозит через UI")
+    @UserSession
     public void userCanDepositMoneySuccessfully() {
+        CreateUserRequest user = SessionStorage.getUser();
+        // ШАГ: Создаём счёт
 
-        // ШАГ 1: Создаём пользователя
-        CreatedUser userAll = AdminSteps.createUser();
-        CreateUserRequest user = userAll.getRequest();
-        authAsUser(user);
-
-        // ШАГ 2: Логинимся
-        authAsUser(user);
-
-        // ШАГ 3: Создаём счёт
         new UserDashboard().open().createNewAccount();
         String accountNumber = new UserSteps(user.getUsername(), user.getPassword()).getAccountNumber();
 
-        // ШАГ 4: Переходим на страницу депозита
+        // ШАГ: Переходим на страницу депозита
         new DepositPage().open()
                 .selectAccount(accountNumber)
                 .enterAmount(1000.0)
                 .submitDeposit();
 
-        // ШАГ 5: Проверяем алерт
+        // ШАГ: Проверяем алерт
         String alertText = getAlertTextAndAccept();
         assertThat(alertText).contains("✅ Successfully deposited $1000");
 
-        // ШАГ 6: Проверяем баланс через API
+        // ШАГ: Проверяем баланс через API
         double balance = new UserSteps(user.getUsername(), user.getPassword())
                 .getAccountBalance();
         assertThat(balance).isEqualTo(1000.0);
@@ -48,13 +42,13 @@ public class UIDepositTest extends BaseUiTest {
 
     @Test
     @DisplayName("Негативный депозит: сумма > 5000")
+    @UserSession
     public void userCannotDepositAboveLimit() {
-        CreateUserRequest user = AdminSteps.createUser().getRequest();
-        authAsUser(user);
-
+        CreateUserRequest user = SessionStorage.getUser(1);
         new UserDashboard().open().createNewAccount();
         String accountNumber = new UserSteps(user.getUsername(), user.getPassword()).getAccountNumber();
 
+        //Пытаемся сделать депозит выше лимита и получить алерт с ошибкой
         new DepositPage().open()
                 .selectAccount(accountNumber)
                 .enterAmount(5001.0)

@@ -1,10 +1,10 @@
 package iteration_2.ui;
 
 import api.models.CreateUserRequest;
-import api.requests.steps.AdminSteps;
-import api.requests.steps.CreatedUser;
 import api.requests.steps.ProfileSteps;
 import com.codeborne.selenide.Selenide;
+import iteration_1.common.annotations.UserSession;
+import iteration_1.storage.SessionStorage;
 import iteration_1.ui.BaseUiTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,34 +17,28 @@ public class UIProfileUpdateTest extends BaseUiTest {
 
     @Test
     @DisplayName("Успешное обновление имени профиля")
+    @UserSession // по умолчанию 1
     public void userCanUpdateProfileName() {
-        // ШАГ 1: Создаём пользователя
+        CreateUserRequest user = SessionStorage.getUser(1);
 
-        CreatedUser userAll = AdminSteps.createUser();
-        CreateUserRequest user = userAll.getRequest();
-
-        authAsUser(user);
-
-
-        // ШАГ 2: Создаём счёт
-        UserDashboard dashbord = new UserDashboard().open().createNewAccount();
+        // ШАГ 1: Создаём счёт
+        new UserDashboard().open().createNewAccount();
         acceptAlert();
 
-        // ШАГ 3: Переходим в профиль и обновляем имя
+        // ШАГ 2: Переходим в профиль и обновляем имя
         new ProfilePage().open()
                 .enterNewName("John Doe")
                 .saveName();
 
-        // ШАГ 5: Проверяем через API
-        String updatedName = ProfileSteps.getProfile(user.getUsername(), user.getPassword())
-                .getName();
+        // ШАГ 3: Проверяем алерт
+        String alertText = getAlertTextAndAccept();
+        assertThat(alertText).contains("✅ Name updated successfully!");
+
+        // ШАГ 4: Проверяем через API
+        String updatedName = ProfileSteps.getProfile(user.getUsername(), user.getPassword()).getName();
         assertThat(updatedName).isEqualTo("John Doe");
 
-        // ШАГ 4: Проверяем алерт
-        String alertText2 = getAlertTextAndAccept();
-        assertThat(alertText2).contains("✅ Name updated successfully!");
-
-        // ШАГ 6: Проверяем через UI
+        // ШАГ 5: Проверяем через UI
         new UserDashboard().open();
         Selenide.sleep(1000);
 
@@ -54,10 +48,8 @@ public class UIProfileUpdateTest extends BaseUiTest {
 
     @Test
     @DisplayName("Негативный: имя из 2 символов")
+    @UserSession
     public void userCannotUpdateProfileWithInvalidName() {
-        CreateUserRequest user = AdminSteps.createUser().getRequest();
-        authAsUser(user);
-
         new UserDashboard().open().createNewAccount();
         acceptAlert();
 

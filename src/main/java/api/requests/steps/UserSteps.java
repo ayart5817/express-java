@@ -149,11 +149,16 @@ public class UserSteps {
         return getAllAccounts(username, password).get(0).getAccountNumber();
     }
 
-   static public void makeDepositTo2000(String username, String password,
-                                  long accountId, double amount) {
+     public void makeDeposit20000() {
+       long accountId = getFirstAccountID();
+       double amount = 5000;
         for (int i = 0; i < 4; i++) {
             makeDeposit(username, password,
                     accountId, amount);
         }
+    }
+
+    public CreateAccountResponse getFirstAccount(CreateUserRequest user) {
+        return getAllAccounts(user.getUsername(), user.getPassword()).get(0);
     }
 }
