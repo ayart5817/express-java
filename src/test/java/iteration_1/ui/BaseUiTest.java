@@ -11,6 +11,7 @@ import iteration_1.common.extensions.BrowserMatchExtension;
 import iteration_1.common.extensions.UserSessionExtension;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.openqa.selenium.Alert;
 
 import java.util.Map;
@@ -22,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @ExtendWith(AdminSessionExtension.class)
 @ExtendWith(UserSessionExtension.class)
 @ExtendWith(BrowserMatchExtension.class)
+@Isolated
 public class BaseUiTest extends BaseTest {
     @BeforeAll
     public static void setupSelenoid() {
@@ -29,6 +31,7 @@ public class BaseUiTest extends BaseTest {
         Configuration.baseUrl = Config.getProperty("uiBaseUrl");
         Configuration.browser = Config.getProperty("browser");
         Configuration.browserSize = Config.getProperty("browserSize");
+        Configuration.headless= true;
 
         Configuration.browserCapabilities.setCapability("selenoid:options",
                 Map.of("enableVNC", true, "enableLog", true)

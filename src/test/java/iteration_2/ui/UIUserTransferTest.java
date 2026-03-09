@@ -3,7 +3,7 @@ package iteration_2.ui;
 import api.models.CreateUserRequest;
 import api.requests.steps.UserSteps;
 import iteration_1.common.annotations.UserSession;
-import iteration_1.storage.SessionStorage;
+import iteration_1.common.storage.SessionStorage;
 import iteration_1.ui.BaseUiTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

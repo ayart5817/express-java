@@ -11,23 +11,57 @@ import api.specs.ResponseSpecs;
 import java.util.List;
 
 public class AdminSteps {
-    public static CreatedUser createUser() {
-        CreateUserRequest request = RandomModelGenerator.generate(CreateUserRequest.class);
-        CreateUserResponse response = new ValidatedCrudRequester<CreateUserResponse>(
-                RequestSpecs.adminSpec(),
-                Endpoint.ADMIN_USER,
-                ResponseSpecs.entityWasCreated()
-        ).postAndExtract(request);
 
+
+    public static CreatedUser createUser() {
+        return createUser(null);
+    }
+
+    // Новый метод с динамическим baseUrl
+    public static CreatedUser createUser(String baseUrl) {
+        CreateUserRequest request = RandomModelGenerator.generate(CreateUserRequest.class);
+
+        ValidatedCrudRequester<CreateUserResponse> requester;
+        if (baseUrl != null && !baseUrl.isEmpty()) {
+            requester = new ValidatedCrudRequester<CreateUserResponse>(
+                    RequestSpecs.adminSpec(baseUrl),
+                    Endpoint.ADMIN_USER,
+                    ResponseSpecs.entityWasCreated()
+            );
+        } else {
+            requester = new ValidatedCrudRequester<CreateUserResponse>(
+                    RequestSpecs.adminSpec(),
+                    Endpoint.ADMIN_USER,
+                    ResponseSpecs.entityWasCreated()
+            );
+        }
+
+        CreateUserResponse response = requester.postAndExtract(request);
         return new CreatedUser(request, response);
     }
 
-    public static List<CreateUserResponse> getAllUsers() {
-        return new ValidatedCrudRequester<CreateUserResponse>(
-                RequestSpecs.adminSpec(),
-                Endpoint.ADMIN_USER,
-                ResponseSpecs.requestReturnsOK()).getAll(CreateUserResponse[].class);
 
+    public static List<CreateUserResponse> getAllUsers() {
+        return getAllUsers(null);
     }
 
+    // Новый метод с динамическим baseUrl
+    public static List<CreateUserResponse> getAllUsers(String baseUrl) {
+        ValidatedCrudRequester<CreateUserResponse> requester;
+        if (baseUrl != null && !baseUrl.isEmpty()) {
+            requester = new ValidatedCrudRequester<CreateUserResponse>(
+                    RequestSpecs.adminSpec(baseUrl),
+                    Endpoint.ADMIN_USER,
+                    ResponseSpecs.requestReturnsOK()
+            );
+        } else {
+            requester = new ValidatedCrudRequester<CreateUserResponse>(
+                    RequestSpecs.adminSpec(),
+                    Endpoint.ADMIN_USER,
+                    ResponseSpecs.requestReturnsOK()
+            );
+        }
+
+        return requester.getAll(CreateUserResponse[].class);
+    }
 }

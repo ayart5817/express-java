@@ -3,7 +3,7 @@ package iteration_2.ui;
 import api.models.CreateUserRequest;
 import api.requests.steps.UserSteps;
 import iteration_1.common.annotations.UserSession;
-import iteration_1.storage.SessionStorage;
+import iteration_1.common.storage.SessionStorage;
 import iteration_1.ui.BaseUiTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,6 +22,7 @@ public class UIDepositTest extends BaseUiTest {
         // ШАГ: Создаём счёт
 
         new UserDashboard().open().createNewAccount();
+        String alertAcceptText = getAlertTextAndAccept();
         String accountNumber = new UserSteps(user.getUsername(), user.getPassword()).getAccountNumber();
 
         // ШАГ: Переходим на страницу депозита
@@ -46,6 +47,7 @@ public class UIDepositTest extends BaseUiTest {
     public void userCannotDepositAboveLimit() {
         CreateUserRequest user = SessionStorage.getUser(1);
         new UserDashboard().open().createNewAccount();
+        String alertAcceptText = getAlertTextAndAccept();
         String accountNumber = new UserSteps(user.getUsername(), user.getPassword()).getAccountNumber();
 
         //Пытаемся сделать депозит выше лимита и получить алерт с ошибкой
