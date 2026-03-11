@@ -27,10 +27,8 @@ public class BaseTest {
             System.err.println("ERROR: Configuration is incomplete!");
             // Устанавливаем значения по умолчанию
             RestAssured.baseURI = "http://localhost:4111";
-            RestAssured.basePath = "/api/v1";
         } else {
-            RestAssured.baseURI = server;
-            RestAssured.basePath = apiVersion;
+            RestAssured.baseURI = Config.getBaseUrl();
         }
     }
 
