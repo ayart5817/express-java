@@ -1,11 +1,12 @@
 package api.requests.steps;
 
 import api.models.*;
-import api.requests.skelethon.Endpoint;
-import api.requests.skelethon.requesters.ValidatedCrudRequester;
+import api.requests.skeleton.Endpoint;
+import api.requests.skeleton.requester.ValidatedCrudRequester;
 import api.specs.RequestSpecs;
 import api.specs.ResponseSpecs;
 import common.helpers.StepLogger;
+import io.restassured.response.ValidatableResponse;
 
 public class AccountSteps {
     private String username;
@@ -16,7 +17,7 @@ public class AccountSteps {
         this.password = password;
     }
 
-    public CreateAccountResponse createAccount() {
+    public ValidatableResponse createAccount() {
         return StepLogger.log("User " + username + " creates account", () -> {
             return new ValidatedCrudRequester<CreateAccountResponse>(
                     RequestSpecs.authAsUser(username, password),
@@ -25,7 +26,7 @@ public class AccountSteps {
         });
     }
 
-    public DepositResponse depositToAccount(Long accountId, double amount) {
+    public ValidatableResponse depositToAccount(Long accountId, double amount) {
         return StepLogger.log("User " + username + " deposits " + amount + " to account " + accountId, () -> {
             DepositRequest depositRequest = DepositRequest.builder()
                     .accountId(accountId)
@@ -35,12 +36,12 @@ public class AccountSteps {
 
             return new ValidatedCrudRequester<DepositResponse>(
                     RequestSpecs.authAsUser(username, password),
-                    Endpoint.ACCOUNT_DEPOSIT,
+                    Endpoint.ACCOUNTS_DEPOSIT,
                     ResponseSpecs.requestReturnsOK()).post(depositRequest);
         });
     }
 
-    public TransferResponse transferWithFraudCheck(Long senderAccountId, Long receiverAccountId, double amount) {
+    public ValidatableResponse transferWithFraudCheck(Long senderAccountId, Long receiverAccountId, double amount) {
         return StepLogger.log("User " + username + " transfers " + amount + " to " + receiverAccountId + " with fraud check", () -> {
             TransferRequest transferRequest = TransferRequest.builder()
                     .senderAccountId(senderAccountId)

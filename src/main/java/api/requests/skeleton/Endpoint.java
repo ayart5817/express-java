@@ -50,6 +50,11 @@ public enum Endpoint {
             "/customer/accounts",
             BaseModel.class,
             AccountResponse.class
+
+    ), TRANSFER_WITH_FRAUD_CHECK(
+            "/accounts/transfer-with-fraud-check",
+            TransferRequest.class,
+            TransferResponse.class
     );
 
 

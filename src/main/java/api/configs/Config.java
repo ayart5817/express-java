@@ -9,34 +9,52 @@ public class Config {
     private final Properties properties = new Properties();
 
     private Config() {
-        try (InputStream input = getClass().getClassLoader().getResourceAsStream("config.properties")) {
-            if (input == null) {
-                throw new RuntimeException("config.properties not found in resources");
-            }
+        // Пытаемся загрузить из разных мест
+        InputStream input = null;
+
+        // 1. Пробуем загрузить из test/resources
+        input = getClass().getClassLoader().getResourceAsStream("config.properties");
+
+        // 2. Если не нашли, пробуем из main/resources
+        if (input == null) {
+            input = Config.class.getResourceAsStream("/config.properties");
+        }
+
+        // 3. Если все еще не нашли, выбрасываем исключение с понятным сообщением
+        if (input == null) {
+            String userDir = System.getProperty("user.dir");
+            String classpath = System.getProperty("java.class.path");
+            throw new RuntimeException(
+                    "config.properties not found!\n" +
+                            "Current directory: " + userDir + "\n" +
+                            "Please ensure the file exists at: src/test/resources/config.properties\n" +
+                            "Or set system properties: -Dserver=http://localhost:4111 -DapiVersion=/api/v1"
+            );
+        }
+
+        try {
             properties.load(input);
         } catch (IOException e) {
-            throw new RuntimeException("Fail to load config.properties", e);
+            throw new RuntimeException("Failed to load config.properties", e);
         }
     }
 
     public static String getProperty(String key) {
-        // ПРИОРИТЕТ 1 - это системное свойство baseApiUrl =..
+        // Проверяем системные свойства первыми (можно переопределить через -D)
         String systemValue = System.getProperty(key);
-
         if (systemValue != null) {
             return systemValue;
         }
 
-        // ПРИОРИТЕТ 2 - это переменная окружения baseApiUrl - BASEAPIURL
-        // admin.username -> ADMIN_USERNAME
-        String envKey = key.toUpperCase().replace('.', '_');
-
-        String envValue = System.getenv(envKey);
-        if (envValue != null) {
-            return envValue;
-        }
-
-        // ПРИОРИТЕТ 3 - это config.properties
         return INSTANCE.properties.getProperty(key);
     }
+
+    public static String getBaseUrl() {
+        String server = getProperty("server");
+        String apiVersion = getProperty("apiVersion");
+
+        return server + apiVersion;
+    }
+
+
 }
