@@ -26,7 +26,7 @@ public class RequestSpecs {
                 .setAccept(ContentType.JSON)
                 .addFilters(List.of(new RequestLoggingFilter(),
                         new ResponseLoggingFilter()))
-                .setBaseUri(Config.getProperty("server") + Config.getProperty("apiVersion"));
+                .setBaseUri(Config.getBaseUrl());
     }
 
     public static RequestSpecification unauthSpec() {
