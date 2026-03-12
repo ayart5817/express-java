@@ -44,8 +44,8 @@ public class UserSteps {
     public static AccountResponse makeDeposit(String username, String password,
                                               long accountId, double amount) {
         DepositRequest request = DepositRequest.builder()
-                .accountId(accountId)
-                .amount(amount)
+                .id(accountId)
+                .balance(amount)
                 .build();
 
         return new ValidatedCrudRequester<AccountResponse>(
@@ -58,8 +58,8 @@ public class UserSteps {
     public static String makeDepositFails(String username, String password,
                                           long accountId, double amount) {
         DepositRequest request = DepositRequest.builder()
-                .accountId(accountId)
-                .amount(amount)
+                .id(accountId)
+                .balance(amount)
                 .build();
 
         return new CrudRequester(
@@ -73,8 +73,8 @@ public class UserSteps {
 
     public static String makeDepositForbidden(String username, String password, long accountId, double amount) {
         DepositRequest request = DepositRequest.builder()
-                .accountId(accountId)
-                .amount(amount)
+                .id(accountId)
+                .balance(amount)
                 .build();
 
         return new CrudRequester(

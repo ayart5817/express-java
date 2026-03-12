@@ -266,6 +266,7 @@ public class ProfileUpdateTest extends BaseTest {
     @Order(18)
     @Test
     @DisplayName("Проверим работу сравнение моделей ")
+    @Tag("Проблемный тест")
     void userCanUpdateProfileName() {
         String newName = "John Doe";
         UpdateProfileRequest request = UpdateProfileRequest.builder()

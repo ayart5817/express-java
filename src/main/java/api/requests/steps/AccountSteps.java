@@ -29,9 +29,9 @@ public class AccountSteps {
     public ValidatableResponse depositToAccount(Long accountId, double amount) {
         return StepLogger.log("User " + username + " deposits " + amount + " to account " + accountId, () -> {
             DepositRequest depositRequest = DepositRequest.builder()
-                    .accountId(accountId)
-                    .amount(amount)
-                    .description("Test deposit")
+                    .id(accountId)
+                    .balance(amount)
+                    //.description("Test deposit")
                     .build();
 
             return new ValidatedCrudRequester<DepositResponse>(
